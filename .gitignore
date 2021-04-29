@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# torchtext
+.vector_cache/
+
+# nltk
+.data/

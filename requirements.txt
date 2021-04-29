@@ -1,0 +1,18 @@
+# required
+torch==1.7.1
+torchtext==0.8.0
+pytorch-lightning==1.0.3
+
+torch-scatter -f https://pytorch-geometric.com/whl/torch-1.8.1+cu102.html
+torch-sparse -f https://pytorch-geometric.com/whl/torch-1.8.1+cu102.html
+torch-cluster -f https://pytorch-geometric.com/whl/torch-1.8.1+cu102.html
+torch-spline-conv -f https://pytorch-geometric.com/whl/torch-1.8.1+cu102.html
+torch-geometric
+
+numpy==1.19.2
+tqdm==4.50.2
+nltk
+
+# additional stuff
+jupyter
+tensorboard
