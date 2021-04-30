@@ -1,18 +1,27 @@
 import argparse
 import os
+import torch
+from torch.utils.data import DataLoader
+from torchtext.data import Field
 from transformers import RobertaConfig, RobertaModel
+from transformers import RobertaTokenizerFast
 from transformers import Trainer, TrainingArguments
 
-from data import get_data_splits
 from datasets.reuters_text import R8
 
 LOG_PATH = "./logs/"
 
 SUPPORTED_MODELS = ['baseline']
 
+ID = Field(sequential=False, include_lengths=False)
+TEXT = Field(sequential=True, lower=True, include_lengths=True, batch_first=True)
+LABEL = Field(sequential=False, include_lengths=False)
+
 
 def train(model, seed, epochs, b_size, l_rate, vocab_size):
     os.makedirs(LOG_PATH, exist_ok=True)
+
+    tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
 
     configuration = RobertaConfig(
         vocab_size=vocab_size,
@@ -34,7 +43,23 @@ def train(model, seed, epochs, b_size, l_rate, vocab_size):
         # # TODO: implement this:  mini-batches from the subgraph datasets
         # data_collator = None
 
-        train_iter, test_iter, val_iter = get_data_splits(R8, vocab_size, b_size)
+        train_dataset, test_dataset, val_dataset = R8.splits(ID, TEXT, LABEL, val_size=0.1)
+
+        train_samples = [' '.join(exp.text) for exp in train_dataset.examples]
+        val_samples = [' '.join(exp.text) for exp in val_dataset.examples]
+        test_samples = [' '.join(exp.text) for exp in test_dataset.examples]
+
+        # actually, all data points should be put into the tokenizer once so that we have the full vocab; splitting into datasets should happen after??
+        train_encodings = tokenizer(train_samples, truncation=True, padding=True)
+
+        # samples (documents)
+        # print(len(train_encodings['input_ids']))
+        # length of first sample (document)
+        # print(len(train_encodings['input_ids'][0]))
+
+        val_encodings = tokenizer(val_samples, truncation=True, padding=True)
+        test_encodings = tokenizer(test_samples, truncation=True, padding=True)
+
     else:
         raise ValueError("Model type '%s' is not supported." % model)
 
@@ -43,24 +68,68 @@ def train(model, seed, epochs, b_size, l_rate, vocab_size):
         output_dir=LOG_PATH,
         overwrite_output_dir=True,
         num_train_epochs=epochs,
-        per_gpu_train_batch_size=b_size,
+        per_device_train_batch_size=b_size,
         # save_total_limit=2,  will limit the total amount of checkpoints. Deletes the older checkpoints in output_dir
         learning_rate=l_rate,
         evaluation_strategy='epoch',  # evaluate at the end of each epoch
         seed=seed
     )
 
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        # data_collator=data_collator,  # function for forming batch from list of elements of train_dataset/eval_dataset
-        train_dataset=train_iter,
-        prediction_loss_only=True,
-    )
+    trainer = RobertaTrainer(train_encodings, test_encodings, val_encodings, model=model, args=training_args)
+    # data_collator=data_collator,  # function for forming batch from list of elements of train_dataset/eval_dataset
 
     trainer.train()
 
     # trainer.save_model("./models/roberta-retrained")
+
+
+# def collate_examples(batch):
+#     """
+#
+#     :param batch: List of torchtext.data.example.Example
+#     :return:
+#     """
+#     print(batch[0].text)
+#     # text contains sentence and sentence length
+#     texts = [example.text[0] for example in batch]
+#     print(texts)
+#     texts = torch.LongTensor(texts)
+#
+#     labels = [example.label for example in batch]
+#     labels = torch.LongTensor(labels)
+#
+#     return [texts, labels]
+
+
+class RobertaTrainer(Trainer):
+
+    def __init__(self, train_dataset, test_dataset, val_dataset, model, args):
+        super().__init__(model=model, args=args)
+
+        self.train_dataset = train_dataset
+        self.test_dataset = test_dataset
+        self.val_dataset = val_dataset
+
+    def get_train_dataloader(self):
+        return DataLoader(
+            self.train_dataset#,
+            # batch_size=batch_size  # Trains with this batch size.
+            # collate_fn=collate_examples
+        )
+
+    def get_eval_dataloader(self):
+        return DataLoader(
+            self.val_dataset#,
+            # batch_size=batch_size  # Trains with this batch size.
+            # collate_fn=collate_examples
+        )
+
+    def get_test_dataloader(self):
+        return DataLoader(
+            self.test_dataset#,
+            # batch_size=batch_size  # Trains with this batch size.
+            # collate_fn=collate_examples
+        )
 
 
 if __name__ == "__main__":

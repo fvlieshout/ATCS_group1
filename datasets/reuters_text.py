@@ -18,12 +18,12 @@ class Reuters(Dataset):
         Args:
             docs (list): List of documents to use.
             fields (list): List of fields in a format such that "fromlist" can be called.
-        """        
+        """
         examples = []
         for doc in docs:
             example = [doc, ' '.join(reuters.words(doc)), reuters.categories(doc)[0]]
             examples.append(Example.fromlist(example, fields))
-            
+
         super().__init__(examples, fields, **kwargs)
         
     @classmethod
