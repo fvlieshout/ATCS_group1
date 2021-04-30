@@ -1,5 +1,6 @@
 import argparse
 import os
+
 import torch
 from torch.utils.data import DataLoader
 from torchtext.data import Field
@@ -35,28 +36,15 @@ def train(model, seed, epochs, b_size, l_rate, vocab_size):
         # Initializing a model from the configuration
         model = RobertaModel(configuration)
 
-        # # TODO: put the real dataset here
-        # # should be sampled sub graphs
-        # # raw feature embeddings of nodes in subgraph batch
-        # train_dataset = torch.utils.data.Dataset()
-        #
-        # # TODO: implement this:  mini-batches from the subgraph datasets
-        # data_collator = None
-
         train_dataset, test_dataset, val_dataset = R8.splits(ID, TEXT, LABEL, val_size=0.1)
 
+        # random stuff, trying to get the dataset into the right format
         train_samples = [' '.join(exp.text) for exp in train_dataset.examples]
         val_samples = [' '.join(exp.text) for exp in val_dataset.examples]
         test_samples = [' '.join(exp.text) for exp in test_dataset.examples]
 
         # actually, all data points should be put into the tokenizer once so that we have the full vocab; splitting into datasets should happen after??
         train_encodings = tokenizer(train_samples, truncation=True, padding=True)
-
-        # samples (documents)
-        # print(len(train_encodings['input_ids']))
-        # length of first sample (document)
-        # print(len(train_encodings['input_ids'][0]))
-
         val_encodings = tokenizer(val_samples, truncation=True, padding=True)
         test_encodings = tokenizer(test_samples, truncation=True, padding=True)
 
@@ -83,52 +71,52 @@ def train(model, seed, epochs, b_size, l_rate, vocab_size):
     # trainer.save_model("./models/roberta-retrained")
 
 
-# def collate_examples(batch):
-#     """
-#
-#     :param batch: List of torchtext.data.example.Example
-#     :return:
-#     """
-#     print(batch[0].text)
-#     # text contains sentence and sentence length
-#     texts = [example.text[0] for example in batch]
-#     print(texts)
-#     texts = torch.LongTensor(texts)
-#
-#     labels = [example.label for example in batch]
-#     labels = torch.LongTensor(labels)
-#
-#     return [texts, labels]
+def collate_examples(batch):
+    """
+
+    :param batch: List of torchtext.data.example.Example
+    :return:
+    """
+    print(batch[0].text)
+
+    # text contains sentence and sentence length
+    texts = [encoding.tokens for encoding in batch]
+    texts = torch.LongTensor(texts)
+
+    labels = [example.label for example in batch]
+    labels = torch.LongTensor(labels)
+
+    return [texts, labels]
 
 
 class RobertaTrainer(Trainer):
 
-    def __init__(self, train_dataset, test_dataset, val_dataset, model, args):
+    def __init__(self, train_encodings, test_encodings, val_encodings, model, args):
         super().__init__(model=model, args=args)
 
-        self.train_dataset = train_dataset
-        self.test_dataset = test_dataset
-        self.val_dataset = val_dataset
+        self.train_encodings = train_encodings
+        self.test_encodings = test_encodings
+        self.val_encodings = val_encodings
 
     def get_train_dataloader(self):
         return DataLoader(
-            self.train_dataset#,
+            self.train_encodings,
             # batch_size=batch_size  # Trains with this batch size.
-            # collate_fn=collate_examples
+            collate_fn=collate_examples
         )
 
     def get_eval_dataloader(self):
         return DataLoader(
-            self.val_dataset#,
+            self.val_encodings,
             # batch_size=batch_size  # Trains with this batch size.
-            # collate_fn=collate_examples
+            collate_fn=collate_examples
         )
 
     def get_test_dataloader(self):
         return DataLoader(
-            self.test_dataset#,
+            self.test_encodings,
             # batch_size=batch_size  # Trains with this batch size.
-            # collate_fn=collate_examples
+            collate_fn=collate_examples
         )
 
 
