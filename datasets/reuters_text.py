@@ -158,7 +158,7 @@ if __name__ == "__main__":
     print("test size=", len(testset))
     print("val size=", len(valset))
 
-    trainloader = DataLoader(trainset, batch_size=2)
+    trainloader = DataLoader(trainset, batch_size=2, shuffle=True)
 
     for data in trainloader:
         input_ids = data["input_ids"]
