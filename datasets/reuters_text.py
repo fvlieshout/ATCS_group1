@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from collections import defaultdict
+import random
 
 import nltk
 nltk.download('reuters')
@@ -26,7 +27,7 @@ class Reuters(Dataset):
         super().__init__(examples, fields, **kwargs)
         
     @classmethod
-    def splits(cls, ID, TEXT, LABEL, r8=False):
+    def splits(cls, ID, TEXT, LABEL, r8=False, val_size=0.1):
         """Creates the train and test splits for R52 or R8.
 
         Args:
@@ -34,18 +35,26 @@ class Reuters(Dataset):
             TEXT (Field): Text field.
             LABEL (Field): Label field.
             r8 (bool, optional): If true, it initializes R8 instead of R52. Defaults to False.
+            val_size (float, optional): Proportion of training documents to include in the validation set.
 
         Returns:
             train_split (Dataset): Training split.
             test_split (Dataset): Test split.
+            val_split (Dataset): Validation split.
         """        
-        # TODO: make validation split too
         train_docs, test_docs = cls.prepare_reuters(r8)
         fields = [('id', ID), ('text', TEXT), ('label', LABEL)]
         
+        # Select the validation documents out of the training documents
+        val_size = int(len(train_docs) * val_size)
+        random.shuffle(train_docs)
+        val_docs = train_docs[:val_size]
+        train_docs = train_docs[val_size:]
+        
         train_split = cls(train_docs, fields)
         test_split = cls(test_docs, fields)
-        return train_split, test_split
+        val_split = cls(val_docs, fields)
+        return train_split, test_split, val_split
 
     @staticmethod
     def prepare_reuters(r8=False):
@@ -61,11 +70,14 @@ class Reuters(Dataset):
         # Filter out docs which don't have exactly 1 class
         data = defaultdict(lambda: {'train': [], 'test': []})
         for doc in reuters.fileids():
+            # print("reuter field=", doc)
             if len(reuters.categories(doc)) == 1:
                 if doc.startswith('training'):
                     data[reuters.categories(doc)[0]]['train'].append(doc)
-                if doc.startswith('test'):
+                elif doc.startswith('test'):
                     data[reuters.categories(doc)[0]]['test'].append(doc)
+                else:
+                    print(doc)
 
         # Filter out classes which have no remaining docs
         for cls in reuters.categories():
