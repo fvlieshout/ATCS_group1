@@ -16,6 +16,4 @@ nltk
 # additional stuff
 jupyter
 tensorboard
-
-# huggingface
-transformers==3.5.1
+transformers~=3.5.1
