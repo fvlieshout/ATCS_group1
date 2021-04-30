@@ -133,3 +133,6 @@ dmypy.json
 
 # nltk
 .data/
+
+# Custom Folders/Files
+.idea
