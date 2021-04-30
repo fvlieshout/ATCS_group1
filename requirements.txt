@@ -16,3 +16,4 @@ nltk
 # additional stuff
 jupyter
 tensorboard
+transformers~=3.5.1
