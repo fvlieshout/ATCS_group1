@@ -1,9 +1,11 @@
 import argparse
 import os
 
-import torch.utils.data
 from transformers import RobertaConfig, RobertaModel
 from transformers import Trainer, TrainingArguments
+
+from data import get_data_splits
+from datasets.reuters_text import R8
 
 LOG_PATH = "./logs/"
 
@@ -22,13 +24,15 @@ def train(seed, epochs, b_size, l_rate, vocab_size):
     # Initializing a model from the configuration
     model = RobertaModel(configuration)
 
-    # TODO: put the real dataset here
-    # should be sampled sub graphs
-    # raw feature embeddings of nodes in subgraph batch
-    train_dataset = torch.utils.data.Dataset()
+    # # TODO: put the real dataset here
+    # # should be sampled sub graphs
+    # # raw feature embeddings of nodes in subgraph batch
+    # train_dataset = torch.utils.data.Dataset()
+    #
+    # # TODO: implement this:  mini-batches from the subgraph datasets
+    # data_collator = None
 
-    # TODO: implement this:  mini-batches from the subgraph datasets
-    data_collator = None
+    train_iter, test_iter, val_iter = get_data_splits(R8, vocab_size, b_size)
 
     # noinspection PyTypeChecker
     training_args = TrainingArguments(
@@ -45,8 +49,8 @@ def train(seed, epochs, b_size, l_rate, vocab_size):
     trainer = Trainer(
         model=model,
         args=training_args,
-        data_collator=data_collator,  # function for forming batch from list of elements of train_dataset/eval_dataset
-        train_dataset=train_dataset,
+        # data_collator=data_collator,  # function for forming batch from list of elements of train_dataset/eval_dataset
+        train_dataset=train_iter,
         prediction_loss_only=True,
     )
 
@@ -61,13 +65,13 @@ if __name__ == "__main__":
     # TRAINING PARAMETERS
 
     parser.add_argument('--epochs', dest='epochs', type=int, default=20)
-    parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
+    parser.add_argument('--batch-size', dest='batch_size', type=int, default=4)
     parser.add_argument('--lr', dest='l_rate', type=float, default=0.1)
 
     # CONFIGURATION
 
     parser.add_argument('--seed', dest='seed', type=int, default=1234)
-    parser.add_argument('--vocab-size', dest='vocab_size', type=int, default=None)
+    parser.add_argument('--vocab-size', dest='vocab_size', type=int, default=10000)
 
     params = vars(parser.parse_args())
 
