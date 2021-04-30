@@ -1,6 +1,5 @@
 import argparse
 import os
-
 from transformers import RobertaConfig, RobertaModel
 from transformers import Trainer, TrainingArguments
 
@@ -9,8 +8,10 @@ from datasets.reuters_text import R8
 
 LOG_PATH = "./logs/"
 
+SUPPORTED_MODELS = ['baseline']
 
-def train(seed, epochs, b_size, l_rate, vocab_size):
+
+def train(model, seed, epochs, b_size, l_rate, vocab_size):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     configuration = RobertaConfig(
@@ -21,18 +22,21 @@ def train(seed, epochs, b_size, l_rate, vocab_size):
         type_vocab_size=1,
     )
 
-    # Initializing a model from the configuration
-    model = RobertaModel(configuration)
+    if model == 'baseline':
+        # Initializing a model from the configuration
+        model = RobertaModel(configuration)
 
-    # # TODO: put the real dataset here
-    # # should be sampled sub graphs
-    # # raw feature embeddings of nodes in subgraph batch
-    # train_dataset = torch.utils.data.Dataset()
-    #
-    # # TODO: implement this:  mini-batches from the subgraph datasets
-    # data_collator = None
+        # # TODO: put the real dataset here
+        # # should be sampled sub graphs
+        # # raw feature embeddings of nodes in subgraph batch
+        # train_dataset = torch.utils.data.Dataset()
+        #
+        # # TODO: implement this:  mini-batches from the subgraph datasets
+        # data_collator = None
 
-    train_iter, test_iter, val_iter = get_data_splits(R8, vocab_size, b_size)
+        train_iter, test_iter, val_iter = get_data_splits(R8, vocab_size, b_size)
+    else:
+        raise ValueError("Model type '%s' is not supported." % model)
 
     # noinspection PyTypeChecker
     training_args = TrainingArguments(
@@ -70,12 +74,15 @@ if __name__ == "__main__":
 
     # CONFIGURATION
 
+    parser.add_argument('--model', dest='model', default='baseline', choices=SUPPORTED_MODELS,
+                        help='Select the model you want to use.')
     parser.add_argument('--seed', dest='seed', type=int, default=1234)
     parser.add_argument('--vocab-size', dest='vocab_size', type=int, default=10000)
 
     params = vars(parser.parse_args())
 
-    train(params['seed'],
+    train(params['model'],
+          params['seed'],
           params['epochs'],
           params["batch_size"],
           params["l_rate"],
