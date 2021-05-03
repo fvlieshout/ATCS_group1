@@ -1,10 +1,13 @@
 import argparse
 import os
+from datasets.reuters_text import R8
+from model import RobertaTrainer, DEFAULT_DEVICE
 import torch
 from torch.utils.data import DataLoader
 from torchtext.data import Field
 from transformers import RobertaConfig, RobertaModel
 from transformers import RobertaTokenizerFast
+from transformers import TrainingArguments
 from transformers import Trainer, TrainingArguments
 from transformers.data.data_collator import default_data_collator
 
@@ -47,12 +50,14 @@ def train(model, seed, epochs, b_size, l_rate, vocab_size, dataset=R8):
         # save_total_limit=2,  will limit the total amount of checkpoints. Deletes the older checkpoints in output_dir
         learning_rate=l_rate,
         evaluation_strategy='epoch',  # evaluate at the end of each epoch
-        seed=seed
+        seed=seed,
+        place_model_on_device=True
     )
 
     trainer = RobertaTrainer(train_dataset, test_dataset, val_dataset,
                              model=model.to(DEFAULT_DEVICE),
-                             roberta_hid_dim=768, num_classes=num_classes,
+                             roberta_hid_dim=768,
+                             num_classes=num_classes,
                              args=training_args)
 
     trainer.train()

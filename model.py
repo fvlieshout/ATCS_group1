@@ -5,6 +5,9 @@ from torch import optim
 from torch.utils.data import DataLoader
 from transformers import Trainer, TrainingArguments
 from transformers.data.data_collator import default_data_collator
+import torch
+from torch import nn
+from transformers import Trainer
 
 DEFAULT_DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
@@ -42,6 +45,7 @@ class RobertaTrainer(Trainer):
         loss = self.loss_module(predictions, labels)
 
         metrics = {'train_loss': loss, 'train_acc': self.accuracy(predictions, labels)}
+        # noinspection PyUnresolvedReferences
         self.log(metrics)
 
         return loss
