@@ -12,6 +12,7 @@ torch-geometric
 numpy==1.19.2
 tqdm==4.50.2
 nltk
+sklearn
 
 # additional stuff
 jupyter
