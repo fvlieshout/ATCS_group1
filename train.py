@@ -5,7 +5,6 @@ import time
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
 import torch
-from pytorch_lightning.callbacks import LearningRateMonitor
 from torch.utils.data import DataLoader
 from transformers import RobertaConfig
 from transformers import RobertaTokenizerFast
@@ -13,6 +12,9 @@ from transformers.data.data_collator import default_data_collator
 
 from datasets.reuters_text import R8
 from model import RobertaModule
+
+# disable parallelism for hugging face to avoid deadlocks
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 LOG_PATH = "./logs/"
 
@@ -32,7 +34,7 @@ def train(model, seed, epochs, b_size, l_rate, dataset=R8):
 
         train_dataset, test_dataset, val_dataset = dataset.splits(tokenizer, val_size=0.1)
 
-        train_dataloader = data_loader(b_size, train_dataset)
+        train_dataloader = data_loader(b_size, train_dataset, shuffle=True)
         test_dataloader = data_loader(b_size, test_dataset)
         val_dataloader = data_loader(b_size, val_dataset)
 
@@ -74,18 +76,16 @@ def train(model, seed, epochs, b_size, l_rate, dataset=R8):
     best_model_path = trainer.checkpoint_callback.best_model_path
     print(f'Best model path: {best_model_path}')
 
-    print('Testing model on validation and test ..........\n')
-
     model = model.load_from_checkpoint(best_model_path)
     test_acc, val_acc = evaluate(trainer, model, test_dataloader, val_dataloader)
 
-    # TODO: do not save roberta model
+    # We want to save the whole model, because we fine-tune anyways!
 
     return test_acc, val_acc
 
 
-def data_loader(b_size, dataset):
-    return DataLoader(dataset, batch_size=b_size, num_workers=24, shuffle=True, collate_fn=default_data_collator)
+def data_loader(b_size, dataset, shuffle=False):
+    return DataLoader(dataset, batch_size=b_size, num_workers=24, shuffle=shuffle, collate_fn=default_data_collator)
 
 
 def evaluate(trainer, model, test_dataloader, val_dataloader):
@@ -115,11 +115,13 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
 def initialize_trainer(epochs, log_dir=None):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
+    # lr_monitor = LearningRateMonitor("epoch")
+
     trainer = pl.Trainer(default_root_dir=log_dir,
                          checkpoint_callback=model_checkpoint,
                          gpus=1 if torch.cuda.is_available() else 0,
                          max_epochs=epochs,
-                         callbacks=[LearningRateMonitor("epoch")],
+                         callbacks=[],
                          progress_bar_refresh_rate=1)
 
     # Optional logging argument that we don't need

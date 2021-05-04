@@ -73,8 +73,15 @@ class RobertaModel(nn.Module):
         roberta_config = model_hparams['roberta_config']
         self.roberta = Roberta(roberta_config)
 
+        # this model is in eval per default, we want to fine-tune it but only the top layers
+        self.roberta.train()
+
         # Freeze roberta parameters TODO: freeze only half of this and fine tune the other half
-        for param in self.roberta.parameters():
+        # for param in self.roberta.parameters():
+        #     param.requires_grad = False
+
+        # only freezing the encoder parameters / weights of the head layers
+        for param in self.roberta.base_model.parameters():
             param.requires_grad = False
 
         self.classifier = nn.Sequential(
