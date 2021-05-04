@@ -1,69 +1,97 @@
 import pytorch_lightning as pl
-import torch
 from torch import nn
-from torch import optim
-from torch.utils.data import DataLoader
-from transformers import Trainer, TrainingArguments
-from transformers.data.data_collator import default_data_collator
-import torch
-from torch import nn
-from transformers import Trainer
-
-DEFAULT_DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+from torch.optim import Adam
+from transformers import RobertaModel as Roberta
 
 
-class RobertaTrainer(Trainer):
+class RobertaModule(pl.LightningModule):
 
-    def __init__(self, train_set, test_set, val_set, model, roberta_hid_dim, num_classes, args):
-        super().__init__(model=model, train_dataset=train_set, eval_dataset=test_set, args=args)
+    # noinspection PyUnusedLocal
+    def __init__(self, model_hparams, optimizer_hparams):
+        """
+        Inputs:
+            model_hparams - Hyperparameters for the whole model, as dictionary. Also contains Roberta Configuration.
+            optimizer_hparams - Hyperparameters for the optimizer, as dictionary. This includes learning rate,
+            weight decay, etc.
+        """
+        super().__init__()
 
-        # TODO: Check how exactly validation/test set are used in trainer
-        # self.val_set = val_set
-
-        self.classifier = nn.Sequential(
-            nn.Linear(roberta_hid_dim, 256),
-            nn.Linear(256, num_classes)
-        ).to(DEFAULT_DEVICE)
+        # Exports the hyperparameters to a YAML file, and create "self.hparams" namespace
+        self.save_hyperparameters()
 
         self.loss_module = nn.CrossEntropyLoss()
 
-    def training_step(self, model, batch):
-        labels = batch['labels'].to(DEFAULT_DEVICE)
-        inputs = batch['input_ids'].to(DEFAULT_DEVICE)
+        self.model = RobertaModel(model_hparams)
 
-        # returns a tuple of torch.FloatTensor comprising various elements depending on the (RobertaConfig) and inputs.
-        roberta_output = model(inputs)
+    def forward(self, inputs):
+        return self.model(inputs)
 
-        # b_size x seq_len x hid_size
-        last_hidden_state = roberta_output[0]
+    def configure_optimizers(self):
+        return Adam(self.parameters(), **self.hparams.optimizer_hparams)
 
-        # b_size x hid_size
-        cls_token_state = roberta_output[1]
+    def training_step(self, batch, batch_idx):
+        """
+        Inputs:
+            batch         - Input batch, output of the training loader.
+            batch_idx     - Index of the batch in the dataset (not needed here).
+        """
 
-        predictions = self.classifier(cls_token_state)
-
+        # "batch" is the output of the training data loader
+        predictions, labels = self.predict(batch)
         loss = self.loss_module(predictions, labels)
 
-        metrics = {'train_loss': loss, 'train_acc': self.accuracy(predictions, labels)}
-        # noinspection PyUnresolvedReferences
-        self.log(metrics)
+        self.log('train_accuracy', self.accuracy(predictions, labels).item(), on_step=False, on_epoch=True)
+        self.log('train_loss', loss)
 
         return loss
 
-    def prediction_step(self, batch, batch_idx):
-        # TODO
-        pass
+    def validation_step(self, batch, batch_idx):
+        # By default logs it per epoch (weighted average over batches)
+        self.log('val_accuracy', self.accuracy(*self.predict(batch)))
+
+    def test_step(self, batch, batch_idx):
+        # By default logs it per epoch (weighted average over batches)
+        self.log('test_accuracy', self.accuracy(*self.predict(batch)))
 
     @staticmethod
     def accuracy(predictions, labels):
         # noinspection PyUnresolvedReferences
         return (labels == predictions.argmax(dim=-1)).float().mean()
 
-    # def get_train_dataloader(self, train_dataset):
-    #     return DataLoader(train_dataset, batch_size=2, shuffle=True, collate_fn=default_data_collator)
+    def predict(self, batch):
+        return self.model(batch['input_ids']), batch['labels']
 
-    # def get_eval_dataloader(self):
-    #     return DataLoader(self.val_set, batch_size=2, shuffle=True, collate_fn=default_data_collator)
+    def count_parameters(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
-    # def get_test_dataloader(self):
-    #     return DataLoader(self.test_set, batch_size=2, shuffle=True, collate_fn=default_data_collator)
+
+class RobertaModel(nn.Module):
+
+    def __init__(self, model_hparams):
+        super().__init__()
+
+        roberta_config = model_hparams['roberta_config']
+        self.roberta = Roberta(roberta_config)
+
+        # Freeze roberta parameters TODO: freeze only half of this and fine tune the other half
+        for param in self.roberta.parameters():
+            param.requires_grad = False
+
+        self.classifier = nn.Sequential(
+            nn.Linear(roberta_config.hidden_size, model_hparams['cf_hid_dim']),
+            nn.Linear(model_hparams['cf_hid_dim'], model_hparams['num_classes'])
+        )
+
+    def forward(self, inputs):
+        # returns a tuple of torch.FloatTensor comprising various elements depending on the (RobertaConfig) and inputs.
+        roberta_output = self.roberta(inputs)
+
+        # b_size x seq_len x hid_size
+        # last_hidden_state = roberta_output[0]
+
+        # b_size x hid_size
+        cls_token_state = roberta_output[1]
+
+        # resulting vector: fed into classifier
+        predictions = self.classifier(cls_token_state)
+        return predictions

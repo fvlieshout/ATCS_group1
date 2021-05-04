@@ -6,9 +6,11 @@ import nltk
 import torch
 
 nltk.download('reuters')
-
 from nltk.corpus import reuters
+from nltk import word_tokenize
 
+from torchtext.data import Dataset, Example
+import torch
 from torch.utils.data import Dataset
 
 
