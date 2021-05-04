@@ -3,13 +3,10 @@ import random
 from collections import defaultdict
 
 import nltk
-import torch
 
 nltk.download('reuters')
 from nltk.corpus import reuters
-from nltk import word_tokenize
 
-from torchtext.data import Dataset, Example
 import torch
 from torch.utils.data import Dataset
 
@@ -37,20 +34,17 @@ class Reuters(Dataset):
         """
         (train_docs, test_docs, val_docs), unique_cls = cls.prepare_reuters(r8, val_size)
 
-        # Maybe this should be in a function
-        train_texts, train_labels = cls._prepare_split(train_docs, unique_cls)
-        train_encodings = tokenizer(train_texts, truncation=True, padding=True)
-        train_split = cls(train_encodings, train_labels, unique_cls)
-
-        test_texts, test_labels = cls._prepare_split(test_docs, unique_cls)
-        test_encodings = tokenizer(test_texts, truncation=True, padding=True)
-        test_split = cls(test_encodings, test_labels, unique_cls)
-
-        val_texts, val_labels = cls._prepare_split(val_docs, unique_cls)
-        val_encodings = tokenizer(val_texts, truncation=True, padding=True)
-        val_split = cls(val_encodings, val_labels, unique_cls)
+        train_split = cls.get_split(tokenizer, train_docs, unique_cls)
+        test_split = cls.get_split(tokenizer, test_docs, unique_cls)
+        val_split = cls.get_split(tokenizer, val_docs, unique_cls)
 
         return train_split, test_split, val_split
+
+    @classmethod
+    def get_split(cls, tokenizer, docs, unique_cls):
+        texts, labels = cls._prepare_split(docs, unique_cls)
+        encodings = tokenizer(texts, truncation=True, padding=True)
+        return cls(encodings, labels, unique_cls)
 
     @staticmethod
     def prepare_reuters(r8=False, val_size=0.1):
