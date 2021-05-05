@@ -87,7 +87,7 @@ class Reuters:
         
         # Feature matrix is Identity (according to TextGCN)
         print('Generate feature matrix')
-        node_feats = torch.eye(len(self.iton), device=self.device)
+        node_feats = torch.eye(len(self.iton), device=self.device).float()
         print('Features mtx is {} GBs in size'.format(node_feats.nelement() * node_feats.element_size() * 1e-9))
         
         # Create pytorch geometric format data
@@ -119,7 +119,7 @@ class Reuters:
             edge_attr.append(score)
         
         edge_index = torch.tensor(edge_index).t().contiguous()
-        edge_attr = torch.tensor(edge_attr)
+        edge_attr = torch.tensor(edge_attr).float()
         return edge_index, edge_attr
     
     def generate_masks(self, train_num, test_num, val_size):
@@ -178,6 +178,7 @@ def eval(model, data, mask):
     print('Accuracy: {:.4f}'.format(acc))
 
 def train(model, data, mask):
+    print()
 
 if __name__ == "__main__":
     r8 = R8(device)
