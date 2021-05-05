@@ -32,7 +32,7 @@ def train(model_name, seed, epochs, b_size, l_rate, l_decay, minimum_lr, cf_hidd
 
     # the data preprocessing per model
 
-    dataset = R8 if dataset_name == 'R8' else R52
+    dataset = get_dataset(dataset_name)
 
     if model_name == 'roberta':
 
