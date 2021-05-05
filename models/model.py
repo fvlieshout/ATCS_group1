@@ -24,8 +24,8 @@ class ClassifierModule(pl.LightningModule):
 
         self.model = DocumentClassifier(model_hparams)
 
-    def forward(self, inputs):
-        return self.model(inputs)
+    def forward(self, batch):
+        return self.model(batch['input_ids'], batch['attention_mask']), batch['labels']
 
     def configure_optimizers(self):
         optimizer = AdamW(self.parameters(), **self.hparams.optimizer_hparams)
@@ -42,7 +42,7 @@ class ClassifierModule(pl.LightningModule):
         """
 
         # "batch" is the output of the training data loader
-        predictions, labels = self.predict(batch)
+        predictions, labels = self.forward(batch)
         loss = self.loss_module(predictions, labels)
 
         self.log('train_accuracy', self.accuracy(predictions, labels).item(), on_step=False, on_epoch=True)
@@ -52,22 +52,16 @@ class ClassifierModule(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         # By default logs it per epoch (weighted average over batches)
-        self.log('val_accuracy', self.accuracy(*self.predict(batch)))
+        self.log('val_accuracy', self.accuracy(*self.forward(batch)))
 
     def test_step(self, batch, batch_idx):
         # By default logs it per epoch (weighted average over batches)
-        self.log('test_accuracy', self.accuracy(*self.predict(batch)))
+        self.log('test_accuracy', self.accuracy(*self.forward(batch)))
 
     @staticmethod
     def accuracy(predictions, labels):
         # noinspection PyUnresolvedReferences
         return (labels == predictions.argmax(dim=-1)).float().mean()
-
-    def predict(self, batch):
-        return self.model(batch['input_ids'], batch['attention_mask']), batch['labels']
-
-    def count_parameters(self):
-        return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
 
 class DocumentClassifier(nn.Module):
