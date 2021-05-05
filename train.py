@@ -5,7 +5,6 @@ import time
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
 import torch
-from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
@@ -126,7 +125,7 @@ def initialize_trainer(epochs, minimum_lr, model):
                          checkpoint_callback=model_checkpoint,
                          gpus=1 if torch.cuda.is_available() else 0,
                          max_epochs=epochs,
-                         callbacks=[LearningRateMonitor("epoch"), early_stop_callback],
+                         callbacks=[early_stop_callback],
                          progress_bar_refresh_rate=1)
 
     # Optional logging argument that we don't need
@@ -163,7 +162,7 @@ if __name__ == "__main__":
     # TRAINING PARAMETERS
 
     parser.add_argument('--epochs', dest='epochs', type=int, default=40)
-    parser.add_argument('--batch-size', dest='batch_size', type=int, default=6)
+    parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
     parser.add_argument('--lr', dest='l_rate', type=float, default=1e-4)
     parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=1e-5, help="Minimum Learning Rate")
     parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=1e-3, help="Learning rate (weight) decay")
