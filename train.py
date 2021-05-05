@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
 from transformers.data.data_collator import default_data_collator
 
-from datasets.reuters_text import R8
+from datasets.reuters_text import R8, R52
 from models.model import ClassifierModule
 
 # disable parallelism for hugging face to avoid deadlocks
@@ -22,13 +22,15 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 LOG_PATH = "./logs/"
 
 SUPPORTED_MODELS = ['roberta']
+SUPPORTED_DATASETS = ['R8', 'R52']
 
 
-def train(model_name, seed, epochs, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim, dataset=R8):
+def train(model_name, seed, epochs, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim, dataset_name=R8):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     pl.seed_everything(seed)
 
+    dataset = 
     # the data preprocessing per model
 
     if model_name == 'roberta':
@@ -123,6 +125,13 @@ def initialize_trainer(epochs, minimum_lr, model):
 
     return trainer
 
+def get_dataset(dataset_name):
+    if dataset_name == "R8":
+        return R8
+    elif dataset_name == "R52":
+        return R52
+    else:
+        raise ValueError("Dataset '%s' is not supported." % dataset_name)
 
 class LearningRateStopping(pl.Callback):
 
@@ -150,6 +159,8 @@ if __name__ == "__main__":
 
     # CONFIGURATION
 
+    parser.add_argument('--dataset', dest='dataset', default='R8', choices=SUPPORTED_DATASETS,
+                        help='Select the dataset you want to use.')
     parser.add_argument('--model', dest='model', default='roberta', choices=SUPPORTED_MODELS,
                         help='Select the model you want to use.')
     parser.add_argument('--seed', dest='seed', type=int, default=1234)
@@ -157,11 +168,14 @@ if __name__ == "__main__":
 
     params = vars(parser.parse_args())
 
-    train(params['model'],
-          params['seed'],
-          params['epochs'],
-          params["batch_size"],
-          params["l_rate"],
-          params["lr_decay"],
-          params["minimum_lr"],
-          params["cf_hidden_dim"])
+    train(
+        model_name=params['model'],
+        seed=params['seed'],
+        epochs=params['epochs'],
+        b_size=params["batch_size"],
+        l_rate=params["l_rate"],
+        l_decay=params["lr_decay"],
+        minimum_lr=params["minimum_lr"],
+        cf_hidden_dim=params["cf_hidden_dim"],
+        dataset_name=params["dataset"]
+    )
