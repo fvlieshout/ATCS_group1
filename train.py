@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
 import torch
 from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
 from transformers.data.data_collator import default_data_collator
@@ -54,7 +55,7 @@ def train(model_name, seed, epochs, b_size, l_rate, l_decay, minimum_lr, cf_hidd
 
     model = ClassifierModule(model_params, optimizer_hparams)
 
-    trainer = initialize_trainer(epochs, minimum_lr, model_name)
+    trainer = initialize_trainer(epochs, minimum_lr, model_name, l_rate, l_decay)
 
     # Training
     print('Fitting model ..........\n')
@@ -106,19 +107,24 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
     return test_accuracy, val_accuracy
 
 
-def initialize_trainer(epochs, minimum_lr, model):
+def initialize_trainer(epochs, minimum_lr, model_name, l_rate, l_decay):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
-    log_dir = os.path.join(LOG_PATH, model)
+    log_dir = os.path.join(LOG_PATH, model_name)
     os.makedirs(log_dir, exist_ok=True)
     os.makedirs(log_dir + "/lightning_logs", exist_ok=True)
 
-    trainer = pl.Trainer(default_root_dir=log_dir,
+    version_str = f'lr=${l_rate}_ldex=${l_decay}'
+    logger = TensorBoardLogger(log_dir, name="my_model", version=version_str)
+
+    trainer = pl.Trainer(logger=logger,
                          checkpoint_callback=model_checkpoint,
                          gpus=1 if torch.cuda.is_available() else 0,
                          max_epochs=epochs,
-                         callbacks=[LearningRateMonitor("epoch"),
-                                    LearningRateStopping(min_value=minimum_lr)],
+                         callbacks=[LearningRateMonitor("epoch")
+                                    # ,
+                                    # LearningRateStopping(min_value=minimum_lr)
+                                    ],
                          progress_bar_refresh_rate=1)
 
     # Optional logging argument that we don't need
@@ -136,17 +142,17 @@ def get_dataset(dataset_name):
         raise ValueError("Dataset '%s' is not supported." % dataset_name)
 
 
-class LearningRateStopping(pl.Callback):
-
-    def __init__(self, min_value):
-        super().__init__()
-        self.min_value = min_value
-
-    def on_validation_end(self, trainer, pl_module):
-        current_lr = trainer.optimizers[0].param_groups[0]['lr']
-        if current_lr is not None and current_lr <= self.min_value:
-            print('Stopping training current LR ' + str(current_lr) + ' min LR ' + str(self.min_value))
-            trainer.should_stop = True
+# class LearningRateStopping(pl.Callback):
+#
+#     def __init__(self, min_value):
+#         super().__init__()
+#         self.min_value = min_value
+#
+#     def on_validation_end(self, trainer, pl_module):
+#         current_lr = trainer.optimizers[0].param_groups[0]['lr']
+#         if current_lr is not None and current_lr <= self.min_value:
+#             print('Stopping training current LR ' + str(current_lr) + ' min LR ' + str(self.min_value))
+#             trainer.should_stop = True
 
 
 if __name__ == "__main__":

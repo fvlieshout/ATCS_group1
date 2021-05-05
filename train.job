@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --time=10:00:00
 #SBATCH --mem=32000M
-#SBATCH --array=1
+#SBATCH --array=1-40%2
 #SBATCH --output=job_outputs/roberta_%A_%a.out
 
 module purge
@@ -17,6 +17,6 @@ module load Anaconda3
 
 source activate atcs-project
 
-PARAMETERS_FILE=parameters.txt
+PARAMETERS_FILE=h_search.txt
 
 srun python -u train.py $(head -$SLURM_ARRAY_TASK_ID $PARAMETERS_FILE | tail -1)
