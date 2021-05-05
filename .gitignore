@@ -137,5 +137,6 @@ dmypy.json
 # Custom Folders/Files
 .idea
 /runs
-/lightning_logs
+/logs
 hparams.yaml
+/job_outputs

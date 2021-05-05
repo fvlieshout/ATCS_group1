@@ -7,12 +7,11 @@ import pytorch_lightning.callbacks as cb
 import torch
 from pytorch_lightning.callbacks import LearningRateMonitor
 from torch.utils.data import DataLoader
-from transformers import RobertaConfig
 from transformers import RobertaTokenizerFast
 from transformers.data.data_collator import default_data_collator
 
 from datasets.reuters_text import R8
-from model import RobertaModule
+from models.model import ClassifierModule
 
 # disable parallelism for hugging face to avoid deadlocks
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -25,13 +24,14 @@ LOG_PATH = "./logs/"
 SUPPORTED_MODELS = ['roberta']
 
 
-def train(model, seed, epochs, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim, dataset=R8):
-    # not really setting the path currently
-    # os.makedirs(LOG_PATH, exist_ok=True)
+def train(model_name, seed, epochs, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim, dataset=R8):
+    os.makedirs(LOG_PATH, exist_ok=True)
 
     pl.seed_everything(seed)
 
-    if model == 'roberta':
+    # the data preprocessing per model
+
+    if model_name == 'roberta':
 
         # Prepare the data
 
@@ -43,28 +43,15 @@ def train(model, seed, epochs, b_size, l_rate, l_decay, minimum_lr, cf_hidden_di
         test_dataloader = data_loader(b_size, test_dataset)
         val_dataloader = data_loader(b_size, val_dataset)
 
-        # Prepare the model (using default configs from huggungface)
-
-        config = RobertaConfig(vocab_size=tokenizer.vocab_size,
-                               num_hidden_layers=12,
-                               num_attention_heads=12,
-                               max_position_embeddings=514,
-                               type_vocab_size=1)
-
-        model_params = {
-            "num_classes": 8 if dataset == R8 else 52,
-            "cf_hid_dim": cf_hidden_dim,
-            'roberta_config': config
-        }
-
-        optimizer_hparams = {"lr": l_rate, "weight_decay": l_decay}
-
-        model = RobertaModule(model_params, optimizer_hparams)
-
     else:
-        raise ValueError("Model type '%s' is not supported." % model)
+        raise ValueError("Model type '%s' is not supported." % model_name)
 
-    trainer = initialize_trainer(epochs, minimum_lr)
+    model_params = {'model': model_name, "num_classes": 8 if dataset == R8 else 52, "cf_hid_dim": cf_hidden_dim}
+    optimizer_hparams = {"lr": l_rate, "weight_decay": l_decay}
+
+    model = ClassifierModule(model_params, optimizer_hparams)
+
+    trainer = initialize_trainer(epochs, minimum_lr, model_name)
 
     # Training
     print('Fitting model ..........\n')
@@ -116,10 +103,12 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
     return test_accuracy, val_accuracy
 
 
-def initialize_trainer(epochs, minimum_lr, log_dir=None):
+def initialize_trainer(epochs, minimum_lr, model):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
-    # lr_monitor = LearningRateMonitor("epoch")
+    log_dir = os.path.join(LOG_PATH, model)
+    os.makedirs(log_dir, exist_ok=True)
+    os.makedirs(log_dir + "/lightning_logs", exist_ok=True)
 
     trainer = pl.Trainer(default_root_dir=log_dir,
                          checkpoint_callback=model_checkpoint,
@@ -155,9 +144,9 @@ if __name__ == "__main__":
 
     parser.add_argument('--epochs', dest='epochs', type=int, default=3)
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=2)
-    parser.add_argument('--lr', dest='l_rate', type=float, default=0.1)
+    parser.add_argument('--lr', dest='l_rate', type=float, default=1e-4)
     parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=1e-5, help="Minimum Learning Rate")
-    parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=0.99, help="Learning rate decay")
+    parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=1e-3, help="Learning rate (weight) decay")
 
     # CONFIGURATION
 

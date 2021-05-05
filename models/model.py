@@ -2,10 +2,10 @@ import pytorch_lightning as pl
 from torch import nn
 from torch import optim
 from torch.optim import AdamW
-from transformers import RobertaModel as Roberta
+from transformers import RobertaModel
 
 
-class RobertaModule(pl.LightningModule):
+class ClassifierModule(pl.LightningModule):
 
     # noinspection PyUnusedLocal
     def __init__(self, model_hparams, optimizer_hparams):
@@ -22,7 +22,7 @@ class RobertaModule(pl.LightningModule):
 
         self.loss_module = nn.CrossEntropyLoss()
 
-        self.model = RobertaClassifier(model_hparams)
+        self.model = DocumentClassifier(model_hparams)
 
     def forward(self, inputs):
         return self.model(inputs)
@@ -70,31 +70,55 @@ class RobertaModule(pl.LightningModule):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
 
-class RobertaClassifier(nn.Module):
+class DocumentClassifier(nn.Module):
 
     def __init__(self, model_hparams):
         super().__init__()
 
-        self.encoder = Roberta(model_hparams['roberta_config'])
+        model = model_hparams['model']
+        if model == 'roberta':
+            self.encoder = TransformerModel()
+        else:
+            raise ValueError("Model type '%s' is not supported." % model)
 
-        # this model is in eval per default, we want to fine-tune it but only the top layers
-        self.encoder.train()
+        cf_hidden_dim = model_hparams['cf_hid_dim']
 
-        # only freezing the encoder parameters / weights of the head layers
-        for param in self.encoder.base_model.parameters():
-            param.requires_grad = False
-
-        # TODO: maybe add non-linearities and dropout?
         self.classifier = nn.Sequential(
-            nn.Linear(roberta_config.hidden_size, model_hparams['cf_hid_dim']),
-            nn.Linear(model_hparams['cf_hid_dim'], model_hparams['num_classes'])
+            # nn.Dropout(model_hparams['dropout']),     # TODO: maybe add later
+            nn.Linear(self.encoder.hidden_size, cf_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(cf_hidden_dim, model_hparams['num_classes'])
         )
 
     def forward(self, inputs, attention_mask=None):
+        out = self.encoder(inputs, attention_mask)
+        out = self.classifier(out)
+        return out
+
+
+class TransformerModel(nn.Module):
+
+    def __init__(self):
+        super().__init__()
+
+        # transformer_config = model_hparams['transformer_config']
+        self.model = RobertaModel.from_pretrained('roberta-base')
+
+        # this is fixed for all base models
+        self.hidden_size = 768
+
+        # this model is in eval per default, we want to fine-tune it but only the top layers
+        self.model.train()
+
+        # only freezing the encoder parameters / weights of the head layers
+        for param in self.model.base_model.parameters():
+            param.requires_grad = False
+
+    def forward(self, inputs, attention_mask=None):
         # returns a tuple of torch.FloatTensor comprising various elements depending on the (RobertaConfig) and inputs.
-        hidden_states = self.encoder(inputs, attention_mask)
+        hidden_states = self.model(inputs, attention_mask)
 
         # b_size x hid_size
         cls_token_state = hidden_states[1]
 
-        return self.classifier(cls_token_state)
+        return cls_token_state

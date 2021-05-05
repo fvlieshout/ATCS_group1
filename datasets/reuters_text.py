@@ -138,8 +138,8 @@ class R52(Reuters):
         super().__init__(*args, **kwargs)
 
     @classmethod
-    def splits(cls, tokenizer, *args, **kwargs):
-        return super().splits(tokenizer, r8=False, *args, **kwargs)
+    def splits(cls, *args, **kwargs):
+        return super().splits(r8=False, *args, **kwargs)
 
 
 class R8(Reuters):
@@ -151,8 +151,8 @@ class R8(Reuters):
         super().__init__(*args, **kwargs)
 
     @classmethod
-    def splits(cls, tokenizer, *args, **kwargs):
-        return super().splits(tokenizer, r8=True, *args, **kwargs)
+    def splits(cls, *args, **kwargs):
+        return super().splits(r8=True, *args, **kwargs)
 
 
 if __name__ == "__main__":
