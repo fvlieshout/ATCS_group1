@@ -25,13 +25,14 @@ SUPPORTED_MODELS = ['roberta']
 SUPPORTED_DATASETS = ['R8', 'R52']
 
 
-def train(model_name, seed, epochs, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim, dataset_name=R8):
+def train(model_name, seed, epochs, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim, dataset_name='R8'):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     pl.seed_everything(seed)
 
-    dataset = 
     # the data preprocessing per model
+
+    dataset = R8 if dataset_name == 'R8' else R52
 
     if model_name == 'roberta':
 
@@ -125,6 +126,7 @@ def initialize_trainer(epochs, minimum_lr, model):
 
     return trainer
 
+
 def get_dataset(dataset_name):
     if dataset_name == "R8":
         return R8
@@ -132,6 +134,7 @@ def get_dataset(dataset_name):
         return R52
     else:
         raise ValueError("Dataset '%s' is not supported." % dataset_name)
+
 
 class LearningRateStopping(pl.Callback):
 
