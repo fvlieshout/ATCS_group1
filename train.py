@@ -25,7 +25,7 @@ SUPPORTED_MODELS = ['roberta']
 SUPPORTED_DATASETS = ['R8', 'R52']
 
 
-def train(model_name, seed, epochs, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim, dataset_name='R8'):
+def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim, dataset_name='R8'):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     pl.seed_everything(seed)
@@ -54,7 +54,7 @@ def train(model_name, seed, epochs, b_size, l_rate, l_decay, minimum_lr, cf_hidd
 
     model = ClassifierModule(model_params, optimizer_hparams)
 
-    trainer = initialize_trainer(epochs, minimum_lr, model_name)
+    trainer = initialize_trainer(epochs, patience, minimum_lr, model_name)
 
     # Training
     print('Fitting model ..........\n')
@@ -107,7 +107,7 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
     return test_accuracy, val_accuracy
 
 
-def initialize_trainer(epochs, minimum_lr, model):
+def initialize_trainer(epochs, patience, minimum_lr, model):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
     log_dir = os.path.join(LOG_PATH, model)
@@ -116,7 +116,7 @@ def initialize_trainer(epochs, minimum_lr, model):
     early_stop_callback = EarlyStopping(
         monitor='val_accuracy',
         min_delta=0.00,
-        patience=10,  # validation happens per default after each training epoch
+        patience=patience,  # validation happens per default after each training epoch
         verbose=False,
         mode='max'
     )
@@ -162,6 +162,7 @@ if __name__ == "__main__":
     # TRAINING PARAMETERS
 
     parser.add_argument('--epochs', dest='epochs', type=int, default=40)
+    parser.add_argument('--patience', dest='patience', type=int, default=10)
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
     parser.add_argument('--lr', dest='l_rate', type=float, default=1e-4)
     parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=1e-5, help="Minimum Learning Rate")
@@ -182,6 +183,7 @@ if __name__ == "__main__":
         model_name=params['model'],
         seed=params['seed'],
         epochs=params['epochs'],
+        patience=params['patience'],
         b_size=params["batch_size"],
         l_rate=params["l_rate"],
         l_decay=params["lr_decay"],
