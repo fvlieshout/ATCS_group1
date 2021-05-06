@@ -1,13 +1,14 @@
-from collections import defaultdict
 import random
+from collections import defaultdict
 
 import nltk
+
 nltk.download('reuters')
 from nltk.corpus import reuters
 import torch
 from torch_geometric.data import Data
 
-from datasets.graph_utils import PMI, tf_idf_mtx
+from datasets.graph_utils import pmi, tf_idf_mtx
 
 
 class Reuters:
@@ -34,7 +35,7 @@ class Reuters:
         tf_idf, words = tf_idf_mtx(corpus)
 
         print('Compute PMI scores')
-        pmi = PMI(corpus)
+        pmi_score = pmi(corpus)
 
         # Index to node name mapping
         self.iton = list(all_docs + words)
@@ -43,7 +44,7 @@ class Reuters:
 
         # Edge index and values for dataset
         print('Generate edges')
-        edge_index, edge_attr = self.generate_edges(len(all_docs), tf_idf, pmi)
+        edge_index, edge_attr = self.generate_edges(len(all_docs), tf_idf, pmi_score)
 
         # Index to label mapping
         self.itol = classes
@@ -60,7 +61,7 @@ class Reuters:
         # Feature matrix is Identity (according to TextGCN)
         print('Generate feature matrix')
         node_feats = torch.eye(len(self.iton), device=self.device).float()
-        #node_feats = torch.rand(size=(len(self.iton), 100), device=self.device).float()
+        # node_feats = torch.rand(size=(len(self.iton), 100), device=self.device).float()
         print('Features mtx is {} GBs in size'.format(node_feats.nelement() * node_feats.element_size() * 1e-9))
 
         # Create pytorch geometric format data
@@ -69,13 +70,14 @@ class Reuters:
         self.data.val_mask = val_mask
         self.data.test_mask = test_mask
 
-    def generate_edges(self, num_docs, tf_idf, pmi):
-        """Generates edge list and weights based on tf.idf and PMI.
+    def generate_edges(self, num_docs, tf_idf, pmi_scores):
+        """
+        Generates edge list and weights based on tf.idf and PMI.
 
         Args:
             num_docs (int): Number of all documents in the dataset
             tf_idf (SparseMatrix): sklearn Sparse matrix object containing tf.idf values
-            pmi (dict): Dictonary of word pairs and corresponding PMI scores
+            pmi_scores (dict): Dictionary of word pairs and corresponding PMI scores
 
         Returns:
             edge_index (Tensor): List of edges.
@@ -94,7 +96,7 @@ class Reuters:
                 edge_attr.append(tf_idf[d_ind, w_ind])
 
         # Word-word edges
-        for (word_i, word_j), score in pmi.items():
+        for (word_i, word_j), score in pmi_scores.items():
             w_i_ind = self.ntoi[word_i]
             w_j_ind = self.ntoi[word_j]
             edge_index.append([w_i_ind, w_j_ind])
@@ -107,7 +109,8 @@ class Reuters:
         return edge_index, edge_attr
 
     def generate_masks(self, train_num, val_num, test_num):
-        """Generates masking for the different splits in the dataset.
+        """
+        Generates masking for the different splits in the dataset.
 
         Args:
             train_num (int): Number of training documents.
@@ -187,6 +190,7 @@ class R52(Reuters):
     """
     Wrapper for the R52 dataset.
     """
+
     def __init__(self, device, val_size=0.1):
         super().__init__(r8=False, device=device, val_size=val_size)
 
@@ -195,5 +199,6 @@ class R8(Reuters):
     """
     Wrapper for the R8 dataset.
     """
+
     def __init__(self, device, val_size=0.1):
         super().__init__(r8=True, device=device, val_size=val_size)
