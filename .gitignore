@@ -145,3 +145,6 @@ dmypy.json
 # Custom Folders/Files
 .idea
 /runs
+/logs
+hparams.yaml
+/job_outputs
