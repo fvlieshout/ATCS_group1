@@ -46,8 +46,8 @@ def prepare_reuters(r8=False):
         data = dict([(cls, splits) for (cls, splits) in data.items() if cls in popular])
 
     # Create splits
-    train_docs = [doc for cls, splits in data.items() for doc in splits['train']][:100]
-    test_docs = [doc for cls, splits in data.items() for doc in splits['test']][:100]
+    train_docs = [doc for cls, splits in data.items() for doc in splits['train']]
+    test_docs = [doc for cls, splits in data.items() for doc in splits['test']]
 
     return train_docs, test_docs, list(data.keys())
 
