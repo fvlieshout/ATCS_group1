@@ -179,12 +179,13 @@ class Reuters(Dataset):
         unique_classes = sorted(data.keys())
 
         # For testing with only a few docs:
-        # return (train_docs[:1000], test_docs[:100], val_docs[:100]), unique_classes
+        return (train_docs[:10], test_docs[:10], val_docs[:10]), unique_classes
 
         return (train_docs, test_docs, val_docs), unique_classes
     
     def len(self):
-        return len(self.data)
+        length = len(self.data)
+        return 1
     
     def get(self, idx):
         return self.data
