@@ -1,6 +1,7 @@
 # Own files
 output/
-*.job
+get_cuda.job
+get_imports.job
 floor_test.py
 gnn-env.yml
 environment_Lisa*
