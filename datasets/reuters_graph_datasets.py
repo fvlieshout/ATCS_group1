@@ -5,13 +5,13 @@ import nltk
 nltk.download('reuters')
 from nltk.corpus import reuters
 import torch
-from torch_geometric.data import Data
+from torch_geometric.data import Data, Dataset
 
 from datasets.graph_utils import PMI, tf_idf_mtx
 
 
-class Reuters:
-    def __init__(self, device, r8=False, val_size=0.1):
+class Reuters(Dataset):
+    def __init__(self, root, device, r8=False, val_size=0.1, transform=None, pre_transform=None):
         """
         Creates the train, test, and validation splits for R52 or R8.
         Args:
@@ -23,6 +23,7 @@ class Reuters:
             test_split (Dataset): Test split.
             val_split (Dataset): Validation split.
         """
+        super(Reuters, self).__init__(root, transform, pre_transform)
         self.device = device
 
         print('Prepare Reuters dataset')
@@ -178,9 +179,15 @@ class Reuters:
         unique_classes = sorted(data.keys())
 
         # For testing with only a few docs:
-        return (train_docs[:1000], test_docs[:100], val_docs[:100]), unique_classes
+        # return (train_docs[:1000], test_docs[:100], val_docs[:100]), unique_classes
 
         return (train_docs, test_docs, val_docs), unique_classes
+    
+    def len(self):
+        return len(self.data)
+    
+    def get(self, idx):
+        return self.data
 
 
 class R52(Reuters):
@@ -195,5 +202,5 @@ class R8(Reuters):
     """
     Wrapper for the R8 dataset.
     """
-    def __init__(self, device, val_size=0.1):
-        super().__init__(r8=True, device=device, val_size=val_size)
+    def __init__(self, device, val_size=0.1, root=None):
+        super().__init__(root=root, r8=True, device=device, val_size=val_size)
