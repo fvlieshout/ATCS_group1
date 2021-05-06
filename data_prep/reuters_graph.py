@@ -137,7 +137,7 @@ class ReutersGraph(Reuters):
         (train_docs, test_docs, val_docs), unique_classes = Reuters.prepare_reuters(r8=r8, val_size=val_size)
 
         # For testing with only a few docs:
-        return (train_docs[:1000], test_docs[:100], val_docs[:100]), unique_classes
+        # return (train_docs[:1000], test_docs[:100], val_docs[:100]), unique_classes
 
     @property
     def num_classes(self):
