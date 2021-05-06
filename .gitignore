@@ -1,6 +1,9 @@
 # Own files
 output/
 *.job
+floor_test.py
+gnn-env.yml
+environment_Lisa*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
