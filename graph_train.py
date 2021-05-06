@@ -16,18 +16,18 @@ from datasets.graph_utils import PMI, tf_idf_mtx
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 class Net(torch.nn.Module):
-    def __init__(self, r8):
+    def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = GCNConv(len(r8.iton), 8)
-        self.conv2 = GCNConv(8, 8)
+        self.conv1 = GCNConv(len(r8.iton), 200)
+        self.conv2 = GCNConv(200, 8)
 
     def forward(self, data):
-        x, edge_index, edge_weight = data.x.double(), data.edge_index, data.edge_attr
+        x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
         x = self.conv1(x, edge_index, edge_weight)
         x = F.relu(x)
-        # x = F.dropout(x, training=self.training)
+        x = F.dropout(x, training=self.training)
         x = self.conv2(x, edge_index, edge_weight)
-        return F.log_softmax(x, dim=1)
+        return x
 
 def eval(model, data, mask):
     model.eval()
