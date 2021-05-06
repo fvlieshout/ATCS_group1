@@ -46,8 +46,8 @@ def prepare_reuters(r8=False):
         data = dict([(cls, splits) for (cls, splits) in data.items() if cls in popular])
 
     # Create splits
-    train_docs = [doc for cls, splits in data.items() for doc in splits['train']]
-    test_docs = [doc for cls, splits in data.items() for doc in splits['test']]
+    train_docs = [doc for cls, splits in data.items() for doc in splits['train']][:100]
+    test_docs = [doc for cls, splits in data.items() for doc in splits['test']][:100]
 
     return train_docs, test_docs, list(data.keys())
 
@@ -158,16 +158,10 @@ class Net(torch.nn.Module):
 
     def forward(self, data):
         x, edge_index, edge_weight = data.x.double(), data.edge_index, data.edge_attr
-        print(x.type())
-        
         x = self.conv1(x, edge_index, edge_weight)
-        print(x.type())
         x = F.relu(x)
-        print(x.type())
-        x = F.dropout(x, training=self.training)
-        print(x.type())
+        # x = F.dropout(x, training=self.training)
         x = self.conv2(x, edge_index, edge_weight)
-        print(x.type())
         return F.log_softmax(x, dim=1)
 
 def eval(model, data, mask):
@@ -182,7 +176,7 @@ def train(model, data, mask):
 
 if __name__ == "__main__":
     r8 = R8(device)
-    cora_dataset = torch_geometric.datasets.Planetoid(root='/tmp/cora', name="Cora")
+    # cora_dataset = torch_geometric.datasets.Planetoid(root='/tmp/cora', name="Cora")
     model = Net(r8).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
     data = r8.data
