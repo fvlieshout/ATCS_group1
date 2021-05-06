@@ -5,7 +5,7 @@ import time
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
 import torch
-from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
 from transformers.data.data_collator import default_data_collator
@@ -26,7 +26,7 @@ SUPPORTED_MODELS = ['roberta']
 SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews']
 
 
-def train(model_name, seed, epochs, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim, dataset_name='R8'):
+def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim, dataset_name='R8'):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     pl.seed_everything(seed)
@@ -55,7 +55,7 @@ def train(model_name, seed, epochs, b_size, l_rate, l_decay, minimum_lr, cf_hidd
 
     model = ClassifierModule(model_params, optimizer_hparams)
 
-    trainer = initialize_trainer(epochs, minimum_lr, model_name)
+    trainer = initialize_trainer(epochs, patience, minimum_lr, model_name)
 
     # Training
     print('Fitting model ..........\n')
@@ -107,24 +107,31 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
     test_elapsed = test_end - test_start
 
     print(f'\nRequired time for testing: {int(test_elapsed / 60)} minutes.\n')
-    print(f'Test Results:\n test accuracy: {test_accuracy}\n validation accuracy: {val_accuracy}\n')
+    print(f'Test Results:\n test accuracy: {test_accuracy}\n validation accuracy: {val_accuracy}'
+          f'\n epochs: {trainer.current_epoch + 1}\n')
 
     return test_accuracy, val_accuracy
 
 
-def initialize_trainer(epochs, minimum_lr, model):
+def initialize_trainer(epochs, patience, minimum_lr, model):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
     log_dir = os.path.join(LOG_PATH, model)
-    os.makedirs(log_dir, exist_ok=True)
     os.makedirs(log_dir + "/lightning_logs", exist_ok=True)
+
+    early_stop_callback = EarlyStopping(
+        monitor='val_accuracy',
+        min_delta=0.00,
+        patience=patience,  # validation happens per default after each training epoch
+        verbose=False,
+        mode='max'
+    )
 
     trainer = pl.Trainer(default_root_dir=log_dir,
                          checkpoint_callback=model_checkpoint,
                          gpus=1 if torch.cuda.is_available() else 0,
                          max_epochs=epochs,
-                         callbacks=[LearningRateMonitor("epoch"),
-                                    LearningRateStopping(min_value=minimum_lr)],
+                         callbacks=[early_stop_callback],
                          progress_bar_refresh_rate=1)
 
     # Optional logging argument that we don't need
@@ -162,8 +169,9 @@ if __name__ == "__main__":
 
     # TRAINING PARAMETERS
 
-    parser.add_argument('--epochs', dest='epochs', type=int, default=3)
-    parser.add_argument('--batch-size', dest='batch_size', type=int, default=2)
+    parser.add_argument('--epochs', dest='epochs', type=int, default=40)
+    parser.add_argument('--patience', dest='patience', type=int, default=10)
+    parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
     parser.add_argument('--lr', dest='l_rate', type=float, default=1e-4)
     parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=1e-5, help="Minimum Learning Rate")
     parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=1e-3, help="Learning rate (weight) decay")
@@ -183,6 +191,7 @@ if __name__ == "__main__":
         model_name=params['model'],
         seed=params['seed'],
         epochs=params['epochs'],
+        patience=params['patience'],
         b_size=params["batch_size"],
         l_rate=params["l_rate"],
         l_decay=params["lr_decay"],

@@ -29,10 +29,12 @@ class ClassifierModule(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = AdamW(self.parameters(), **self.hparams.optimizer_hparams)
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1,
-                                              gamma=self.hparams.optimizer_hparams['weight_decay'])
 
-        return [optimizer], [scheduler]
+        # Disabling it for now as it prevented the model somehow to actually learn
+        # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1,
+        #                                       gamma=self.hparams.optimizer_hparams['weight_decay'])
+
+        return [optimizer], [] #[scheduler]
 
     def training_step(self, batch, batch_idx):
         """
