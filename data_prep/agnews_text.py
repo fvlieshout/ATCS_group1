@@ -2,13 +2,14 @@
 import torch
 from torch.utils.data import Dataset
 from datasets import load_dataset
-
+# from transformers.data.data_collator import default_data_collator
 
 class AGNews(Dataset):
-    def __init__(self, encodings, labels, classes):
-        self.encodings = encodings
+    def __init__(self, texts, labels, classes, tokenizer):
+        self.texts = texts
         self.labels = labels
         self.classes = classes
+        self.tokenizer = tokenizer
     
     @classmethod
     def splits(cls, tokenizer, val_size=0.1):
@@ -38,9 +39,8 @@ class AGNews(Dataset):
     @classmethod
     def get_split(cls, tokenizer, dataset):
         texts, labels = cls._prepare_split(dataset)
-        encodings = tokenizer(texts, truncation=True, padding=True)
         unique_cls = dataset.features["label"].names
-        return cls(encodings, labels, unique_cls)
+        return cls(texts, labels, unique_cls, tokenizer)
     
     @staticmethod
     def _prepare_split(dataset):
@@ -52,10 +52,23 @@ class AGNews(Dataset):
 
         return texts, labels
     
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            texts = [data["text"] for data in batch]
+            labels = [data["label"] for data in batch]
+            encodings = self.tokenizer(texts, truncation=True, padding=True)
+            
+            items = {key: torch.tensor(val) for key, val in encodings.items()}
+            items["labels"] = torch.tensor(labels)
+
+            return items
+        return collate_fn
+    
     def __getitem__(self, idx):
-        # assumes that the encodings were created using a HuggingFace tokenizer
-        item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
-        item["labels"] = torch.tensor(self.labels[idx])
+        item = {
+            "text": self.texts[idx],
+            "label": self.labels[idx]
+        }
         return item
     
     def __len__(self):
@@ -73,9 +86,10 @@ if __name__ == "__main__":
     print("test size=", len(test_set))
     print("val size=", len(val_set))
 
-    train_loader = DataLoader(train_set, batch_size=2, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=2, shuffle=True, collate_fn=train_set.get_collate_fn())
 
     for data_batch in train_loader:
+        print(data_batch)
         input_ids = data_batch["input_ids"]
         attention_mask = data_batch["attention_mask"]
         d_labels = data_batch["labels"]
