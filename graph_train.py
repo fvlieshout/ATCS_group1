@@ -6,7 +6,7 @@ import nltk
 import torch_geometric
 nltk.download('reuters')
 from nltk.corpus import reuters
-from datasets/reuters_text import R8, R52
+from datasets.reuters_text import R8, R52
 from torch_geometric.data import Data
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
