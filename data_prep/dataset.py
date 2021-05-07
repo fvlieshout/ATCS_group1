@@ -1,7 +1,7 @@
 import abc
 import torch.utils.data as data
 
-class Dataset(abc.ABCMeta):
+class Dataset(metaclass=abc.ABCMeta):
     """
     Parent class for all datasets.
     Require to implement a num_classes property.
@@ -21,9 +21,7 @@ class TextDataset(Dataset, data.Dataset):
     Parent class for text datasets.
     Require to implement get_collate_fn.
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
+    @abc.abstractmethod
     def get_collate_fn(self):
         """
         Return a fonction (collate_fn) to be used to preprocess a batch in the Dataloader.

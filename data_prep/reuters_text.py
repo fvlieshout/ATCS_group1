@@ -11,7 +11,7 @@ import torch
 from data_prep.dataset import TextDataset
 from torch.utils.data import Dataset
 
-class Reuters(Dataset):
+class Reuters(TextDataset):
     def __init__(self, encodings, labels, classes):
         self.encodings = encodings
         self.labels = labels
@@ -29,9 +29,9 @@ class Reuters(Dataset):
             val_size (float, optional): Proportion of training documents to include in the validation set.
 
         Returns:
-            train_split (Dataset): Training split.
-            test_split (Dataset): Test split.
-            val_split (Dataset): Validation split.
+            train_split (TextDataset): Training split.
+            test_split (TextDataset): Test split.
+            val_split (TextDataset): Validation split.
         """
         (train_docs, test_docs, val_docs), unique_cls = cls.prepare_reuters(r8, val_size)
 
@@ -45,7 +45,6 @@ class Reuters(Dataset):
     def get_split(cls, tokenizer, docs, unique_cls):
         texts, labels = cls._prepare_split(docs, unique_cls)
         encodings = tokenizer(texts, truncation=True, padding=True)
-        print("HELLO", cls)
         return cls(encodings, labels, unique_cls)
 
     @staticmethod
@@ -120,6 +119,12 @@ class Reuters(Dataset):
             labels.append(classes.index(clz))
 
         return texts, labels
+    
+    def get_collate_fn(self):
+        """
+        No specific collate function required.
+        """
+        return None
     
     @property
     def num_classes(self):
