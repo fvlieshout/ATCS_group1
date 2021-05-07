@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
 from transformers.data.data_collator import default_data_collator
 
-from datasets.reuters_text import R8, R52
+from data_prep.reuters_text import R8, R52
 from models.model import ClassifierModule
 
 # disable parallelism for hugging face to avoid deadlocks
@@ -49,7 +49,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_l
     else:
         raise ValueError("Model type '%s' is not supported." % model_name)
 
-    model_params = {'model': model_name, "num_classes": dataset.num_classes, "cf_hid_dim": cf_hidden_dim}
+    model_params = {'model': model_name, "num_classes": train_dataset.num_classes, "cf_hid_dim": cf_hidden_dim}
     optimizer_hparams = {"lr": l_rate, "weight_decay": l_decay}
 
     model = ClassifierModule(model_params, optimizer_hparams)

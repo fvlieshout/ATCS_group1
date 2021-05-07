@@ -7,8 +7,8 @@ class Dataset(abc.ABCMeta):
     Require to implement a num_classes property.
 
     """
-    @abc.abstractmethod
     @property
+    @abc.abstractmethod
     def num_classes(self):
         """
         Return the number of unique classes in the dataset.
@@ -21,7 +21,9 @@ class TextDataset(Dataset, data.Dataset):
     Parent class for text datasets.
     Require to implement get_collate_fn.
     """
-    @abc.abstractmethod
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def get_collate_fn(self):
         """
         Return a fonction (collate_fn) to be used to preprocess a batch in the Dataloader.

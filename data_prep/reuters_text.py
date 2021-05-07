@@ -8,13 +8,15 @@ nltk.download('reuters')
 from nltk.corpus import reuters
 
 import torch
-from datasets.dataset import TextDataset
+from data_prep.dataset import TextDataset
+from torch.utils.data import Dataset
 
-class Reuters(TextDataset):
+class Reuters(Dataset):
     def __init__(self, encodings, labels, classes):
         self.encodings = encodings
         self.labels = labels
         self.classes = classes
+
 
     @classmethod
     def splits(cls, tokenizer, r8=False, val_size=0.1):
@@ -43,6 +45,7 @@ class Reuters(TextDataset):
     def get_split(cls, tokenizer, docs, unique_cls):
         texts, labels = cls._prepare_split(docs, unique_cls)
         encodings = tokenizer(texts, truncation=True, padding=True)
+        print("HELLO", cls)
         return cls(encodings, labels, unique_cls)
 
     @staticmethod

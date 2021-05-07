@@ -7,8 +7,8 @@ from nltk.corpus import reuters
 import torch
 from torch_geometric.data import Data
 
-from datasets.graph_utils import PMI, tf_idf_mtx
-from datasets.dataset import Dataset
+from data_prep.graph_utils import PMI, tf_idf_mtx
+from data_prep.dataset import Dataset
 
 class Reuters(Dataset):
     def __init__(self, device, r8=False, val_size=0.1):
