@@ -1,1 +1,3 @@
---model roberta --patience 4
+--model roberta --patience 3
+--model roberta --patience 5
+--model roberta --patience 10

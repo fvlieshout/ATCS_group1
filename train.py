@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
 import torch
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
 from transformers.data.data_collator import default_data_collator
@@ -27,6 +28,10 @@ SUPPORTED_DATASETS = ['R8', 'R52']
 
 def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim, dataset_name='R8'):
     os.makedirs(LOG_PATH, exist_ok=True)
+
+    print(f'Configuration:\n model_name: {model_name} \n max epochs: {epochs}\n patience: {patience}'
+          f'\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n l_rate: {l_rate}\n '
+          f'cf_hidden_dim: {cf_hidden_dim}\n dataset_name: {dataset_name}\n')
 
     pl.seed_everything(seed)
 
@@ -54,7 +59,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_l
 
     model = ClassifierModule(model_params, optimizer_hparams)
 
-    trainer = initialize_trainer(epochs, patience, minimum_lr, model_name)
+    trainer = initialize_trainer(epochs, patience, minimum_lr, model_name, l_rate, l_decay)
 
     # Training
     print('Fitting model ..........\n')
@@ -107,11 +112,14 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
     return test_accuracy, val_accuracy
 
 
-def initialize_trainer(epochs, patience, minimum_lr, model):
+def initialize_trainer(epochs, patience, minimum_lr, model_name, l_rate, l_decay):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
-    log_dir = os.path.join(LOG_PATH, model)
-    os.makedirs(log_dir + "/lightning_logs", exist_ok=True)
+    log_dir = os.path.join(LOG_PATH, model_name, "lightning_logs")
+    os.makedirs(log_dir, exist_ok=True)
+
+    version_str = f'patience=${patience}lr=${l_rate}_ldex=${l_decay}'
+    logger = TensorBoardLogger(log_dir, name=model_name, version=version_str)
 
     early_stop_callback = EarlyStopping(
         monitor='val_accuracy',
@@ -121,7 +129,7 @@ def initialize_trainer(epochs, patience, minimum_lr, model):
         mode='max'
     )
 
-    trainer = pl.Trainer(default_root_dir=log_dir,
+    trainer = pl.Trainer(logger=logger,
                          checkpoint_callback=model_checkpoint,
                          gpus=1 if torch.cuda.is_available() else 0,
                          max_epochs=epochs,

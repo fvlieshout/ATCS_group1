@@ -8,7 +8,7 @@
 #SBATCH --time=10:00:00
 #SBATCH --mem=32000M
 #SBATCH --array=1-3%2
-#SBATCH --output=job_outputs/roberta_%A_%a.out
+#SBATCH --output=logs/job_outputs/roberta_%A_%a.out
 
 module purge
 module load 2019
