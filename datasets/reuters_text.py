@@ -8,10 +8,9 @@ nltk.download('reuters')
 from nltk.corpus import reuters
 
 import torch
-from torch.utils.data import Dataset
+from datasets.dataset import TextDataset
 
-
-class Reuters(Dataset):
+class Reuters(TextDataset):
     def __init__(self, encodings, labels, classes):
         self.encodings = encodings
         self.labels = labels

@@ -8,9 +8,9 @@ import torch
 from torch_geometric.data import Data
 
 from datasets.graph_utils import PMI, tf_idf_mtx
+from datasets.dataset import Dataset
 
-
-class Reuters:
+class Reuters(Dataset):
     def __init__(self, device, r8=False, val_size=0.1):
         """
         Creates the train, test, and validation splits for R52 or R8.
@@ -182,9 +182,15 @@ class Reuters:
 
         return (train_docs, test_docs, val_docs), unique_classes
     
-    @property()
+    @property
     def num_classes(self):
         return len(self.itol)
+    
+    def get_collate_fn(self):
+        return None
+
+    
+
 
 
 class R52(Reuters):
