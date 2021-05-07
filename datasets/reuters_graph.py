@@ -181,6 +181,10 @@ class Reuters:
         return (train_docs[:1000], test_docs[:100], val_docs[:100]), unique_classes
 
         return (train_docs, test_docs, val_docs), unique_classes
+    
+    @property()
+    def num_classes(self):
+        return len(self.itol)
 
 
 class R52(Reuters):

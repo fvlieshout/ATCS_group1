@@ -49,7 +49,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_l
     else:
         raise ValueError("Model type '%s' is not supported." % model_name)
 
-    model_params = {'model': model_name, "num_classes": 8 if dataset == R8 else 52, "cf_hid_dim": cf_hidden_dim}
+    model_params = {'model': model_name, "num_classes": dataset.num_classes, "cf_hid_dim": cf_hidden_dim}
     optimizer_hparams = {"lr": l_rate, "weight_decay": l_decay}
 
     model = ClassifierModule(model_params, optimizer_hparams)

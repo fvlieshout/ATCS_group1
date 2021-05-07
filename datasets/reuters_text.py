@@ -118,6 +118,10 @@ class Reuters(Dataset):
             labels.append(classes.index(clz))
 
         return texts, labels
+    
+    @property
+    def num_classes(self):
+        return len(self.classes)
 
     def __getitem__(self, idx):
         # assumes that the encodings were created using a HuggingFace tokenizer
