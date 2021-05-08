@@ -1,16 +1,14 @@
 from collections import defaultdict
 import random
 
-import nltk
-nltk.download('reuters')
 from nltk.corpus import reuters
 import torch
 from torch_geometric.data import Data
 
 from data_prep.graph_utils import PMI, tf_idf_mtx
-from data_prep.dataset import Dataset
+from data_prep.dataset import Reuters
 
-class Reuters(Dataset):
+class ReutersGraph(Reuters):
     def __init__(self, device, r8=False, val_size=0.1):
         """
         Creates the train, test, and validation splits for R52 or R8.
@@ -133,55 +131,11 @@ class Reuters(Dataset):
 
     @staticmethod
     def prepare_reuters(r8=False, val_size=0.1):
-        """
-        Filters out all documents which have more or less than 1 class.
-        Then filters out all classes which have no remaining documents.
-        Args:
-            r8 (bool, optional): R8 is constructed by taking only the top 10 (original) classes. Defaults to False.
-            val_size (float, optional): Proportion of training documents to include in the validation set.
-        Returns:
-            doc_splits (tuple): Tuple containing 3 List of training, test, and validation documents.
-            unique_classes (List): List of Strings containing the class names sorted in alphabetical order.
-        """
-        # Filter out docs which don't have exactly 1 class
-        data = defaultdict(lambda: {'train': [], 'test': []})
-
-        for doc in reuters.fileids():
-            categories = reuters.categories(doc)
-            if len(categories) == 1:
-                if doc.startswith('training'):
-                    data[categories[0]]['train'].append(doc)
-                if doc.startswith('test'):
-                    data[categories[0]]['test'].append(doc)
-
-        # Filter out classes which have no remaining docs
-        for cat in reuters.categories():
-            if len(data[cat]['train']) < 1 or len(data[cat]['test']) < 1:
-                data.pop(cat, None)
-
-        if r8:
-            # Choose top 10 classes and then select the ones which still remain after filtering
-            popular = sorted(reuters.categories(), key=lambda clz: len(reuters.fileids(clz)), reverse=True)[:10]
-            data = dict([(cls, splits) for (cls, splits) in data.items() if cls in popular])
-
-        # Create splits
-        train_docs = [doc for cls, splits in data.items() for doc in splits['train']]
-        test_docs = [doc for cls, splits in data.items() for doc in splits['test']]
-
-        # Select the validation documents out of the training documents
-        val_size = int(len(train_docs) * val_size)
-        random.shuffle(train_docs)
-        val_docs = train_docs[:val_size]
-        train_docs = train_docs[val_size:]
-
-        # sort the unique classes to ensure constant order
-        unique_classes = sorted(data.keys())
+        (train_docs, test_docs, val_docs), unique_classes = Reuters.prepare_reuters(r8=r8, val_size=val_size)
 
         # For testing with only a few docs:
         return (train_docs[:1000], test_docs[:100], val_docs[:100]), unique_classes
-
-        return (train_docs, test_docs, val_docs), unique_classes
-    
+        
     @property
     def num_classes(self):
         return len(self.itol)
@@ -193,7 +147,7 @@ class Reuters(Dataset):
 
 
 
-class R52(Reuters):
+class R52Graph(ReutersGraph):
     """
     Wrapper for the R52 dataset.
     """
@@ -201,7 +155,7 @@ class R52(Reuters):
         super().__init__(r8=False, device=device, val_size=val_size)
 
 
-class R8(Reuters):
+class R8Graph(ReutersGraph):
     """
     Wrapper for the R8 dataset.
     """

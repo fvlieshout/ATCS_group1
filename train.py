@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
 from transformers.data.data_collator import default_data_collator
 
-from data_prep.reuters_text import R8, R52
+from data_prep.reuters_text import R8Text, R52Text
 from models.model import ClassifierModule
 
 # disable parallelism for hugging face to avoid deadlocks
@@ -141,9 +141,9 @@ def initialize_trainer(epochs, patience, minimum_lr, model):
 
 def get_dataset(dataset_name):
     if dataset_name == "R8":
-        return R8
+        return R8Text
     elif dataset_name == "R52":
-        return R52
+        return R52Text
     else:
         raise ValueError("Dataset '%s' is not supported." % dataset_name)
 
