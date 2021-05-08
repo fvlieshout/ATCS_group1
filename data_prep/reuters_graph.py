@@ -1,6 +1,3 @@
-from collections import defaultdict
-import random
-
 import nltk
 nltk.download('reuters')
 from nltk.corpus import reuters

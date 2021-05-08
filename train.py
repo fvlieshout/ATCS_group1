@@ -22,10 +22,10 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 LOG_PATH = "./logs/"
 
 SUPPORTED_MODELS = ['roberta']
-SUPPORTED_DATASETS = ['R8', 'R52']
+SUPPORTED_DATASETS = ['R8Text', 'R52Text']
 
 
-def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim, dataset_name='R8'):
+def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim, dataset_name='R8Text'):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     pl.seed_everything(seed)
@@ -135,9 +135,9 @@ def initialize_trainer(epochs, patience, minimum_lr, model):
 
 
 def get_dataset(dataset_name):
-    if dataset_name == "R8":
+    if dataset_name == "R8Text":
         return R8Text
-    elif dataset_name == "R52":
+    elif dataset_name == "R52Text":
         return R52Text
     else:
         raise ValueError("Dataset '%s' is not supported." % dataset_name)
@@ -170,7 +170,7 @@ if __name__ == "__main__":
 
     # CONFIGURATION
 
-    parser.add_argument('--dataset', dest='dataset', default='R8', choices=SUPPORTED_DATASETS,
+    parser.add_argument('--dataset', dest='dataset', default='R8Text', choices=SUPPORTED_DATASETS,
                         help='Select the dataset you want to use.')
     parser.add_argument('--model', dest='model', default='roberta', choices=SUPPORTED_MODELS,
                         help='Select the model you want to use.')

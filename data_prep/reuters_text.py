@@ -24,9 +24,9 @@ class ReutersText(Reuters, TextDataset):
             val_size (float, optional): Proportion of training documents to include in the validation set.
 
         Returns:
-            train_split (TextDataset): Training split.
-            test_split (TextDataset): Test split.
-            val_split (TextDataset): Validation split.
+            train_split (ReutersText): Training split.
+            test_split (ReutersText): Test split.
+            val_split (ReutersText): Validation split.
         """
         (train_docs, test_docs, val_docs), unique_cls = cls.prepare_reuters(r8, val_size)
 
@@ -63,7 +63,7 @@ class ReutersText(Reuters, TextDataset):
             texts.append(text)
             labels.append(classes.index(clz))
 
-        return texts[:100], labels[:100]
+        return texts, labels
     
     def get_collate_fn(self):
         """
