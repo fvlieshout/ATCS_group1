@@ -9,7 +9,6 @@ class Dataset(data.Dataset, metaclass=abc.ABCMeta):
     """
     Parent class for all datasets.
     Require to implement a num_classes property.
-
     """
     @property
     @abc.abstractmethod
@@ -28,12 +27,16 @@ class TextDataset(Dataset):
     @abc.abstractmethod
     def get_collate_fn(self):
         """
-        Return a fonction (collate_fn) to be used to preprocess a batch in the Dataloader.
+        Return a function (collate_fn) to be used to preprocess a batch in the Dataloader.
         """
         raise NotImplementedError
 
 
 class Reuters(Dataset):
+    """
+    Parent class for Reuters datasets.
+    Provide a method to generate the training, validation, and test documents.
+    """
     @staticmethod
     def prepare_reuters(r8=False, val_size=0.1):
         """

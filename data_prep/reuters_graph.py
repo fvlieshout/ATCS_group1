@@ -1,6 +1,8 @@
 from collections import defaultdict
 import random
 
+import nltk
+nltk.download('reuters')
 from nltk.corpus import reuters
 import torch
 from torch_geometric.data import Data
@@ -139,12 +141,6 @@ class ReutersGraph(Reuters):
     @property
     def num_classes(self):
         return len(self.itol)
-    
-    def get_collate_fn(self):
-        return None
-
-    
-
 
 
 class R52Graph(ReutersGraph):

@@ -78,13 +78,8 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_l
     return test_acc, val_acc
 
 
-def data_loader(b_size, dataset, shuffle=False):
-    collate_fn = dataset.get_collate_fn()
-    
-    if collate_fn is None:
-        collate_fn = default_data_collator
-    
-    return DataLoader(dataset, batch_size=b_size, num_workers=24, shuffle=shuffle, collate_fn=collate_fn)
+def data_loader(b_size, dataset, shuffle=False):  
+    return DataLoader(dataset, batch_size=b_size, num_workers=24, shuffle=shuffle, collate_fn=dataset.get_collate_fn())
 
 
 def evaluate(trainer, model, test_dataloader, val_dataloader):
