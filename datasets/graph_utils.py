@@ -30,7 +30,8 @@ def word_windows(corpus, window_size=15):
 
 
 def word_frequency(windows):
-    """#W(i) is the number of sliding windows in a corpus that contain word i.
+    """
+    #W(i) is the number of sliding windows in a corpus that contain word i.
     Implemented as https://github.com/yao8839836/text_gcn/blob/master/build_graph.py#L396
 
     Args:
@@ -51,10 +52,9 @@ def word_frequency(windows):
     return word_window_freq
 
 
-#
 def word_pair_frequency(windows):
     """
-    W(i,j) is the number of sliding windows that contain both word i and j.
+    #W(i,j) is the number of sliding windows that contain both word i and j.
 
     Args:
         windows (list): Word windows

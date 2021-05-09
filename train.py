@@ -115,11 +115,10 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
 def initialize_trainer(epochs, patience, minimum_lr, model_name, l_rate, l_decay):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
-    log_dir = os.path.join(LOG_PATH, model_name, "lightning_logs")
-    os.makedirs(log_dir, exist_ok=True)
+    os.makedirs(LOG_PATH, exist_ok=True)
 
-    version_str = f'patience=${patience}lr=${l_rate}_ldex=${l_decay}'
-    logger = TensorBoardLogger(log_dir, name=model_name, version=version_str)
+    version_str = f'patience={patience}_lr={l_rate}_ldec={l_decay}'
+    logger = TensorBoardLogger(LOG_PATH, name=model_name, version=version_str)
 
     early_stop_callback = EarlyStopping(
         monitor='val_accuracy',
