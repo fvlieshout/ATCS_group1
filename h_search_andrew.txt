@@ -1,7 +1,5 @@
---model roberta --lr 4e-5 --lr-decay 1e-4 --patience 15
 --model roberta --lr 4e-5 --lr-decay 1e-3 --patience 15
 --model roberta --lr 4e-5 --lr-decay 2e-3 --patience 15
---model roberta --lr 4e-5 --lr-decay 5e-1 --patience 15
 --model roberta --lr 5e-5 --lr-decay 1e-4 --patience 15
 --model roberta --lr 5e-5 --lr-decay 1e-3 --patience 15
 --model roberta --lr 5e-5 --lr-decay 2e-3 --patience 15
