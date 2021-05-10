@@ -1,6 +1,7 @@
 import abc
 import random
 from collections import defaultdict
+
 import torch.utils.data as data
 from nltk.corpus import reuters
 
@@ -10,6 +11,7 @@ class Dataset(data.Dataset, metaclass=abc.ABCMeta):
     Parent class for all datasets.
     Require to implement a num_classes property.
     """
+
     @property
     @abc.abstractmethod
     def num_classes(self):
@@ -24,6 +26,7 @@ class TextDataset(Dataset):
     Parent class for text datasets.
     Require to implement get_collate_fn.
     """
+
     @abc.abstractmethod
     def get_collate_fn(self):
         """
@@ -37,6 +40,7 @@ class Reuters(Dataset):
     Parent class for Reuters datasets.
     Provide a method to generate the training, validation, and test documents.
     """
+
     @staticmethod
     def prepare_reuters(r8=False, val_size=0.1):
         """

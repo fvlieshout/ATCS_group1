@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 import nltk
+
 nltk.download('reuters')
 from nltk.corpus import reuters
 
 import torch
 from data_prep.dataset import TextDataset, Reuters
 from transformers.data.data_collator import default_data_collator
+
 
 class ReutersText(Reuters, TextDataset):
     def __init__(self, encodings, labels, classes):
@@ -64,13 +66,13 @@ class ReutersText(Reuters, TextDataset):
             labels.append(classes.index(clz))
 
         return texts, labels
-    
+
     def get_collate_fn(self):
         """
         No specific collate function required.
         """
         return default_data_collator
-    
+
     @property
     def num_classes(self):
         return len(self.classes)
