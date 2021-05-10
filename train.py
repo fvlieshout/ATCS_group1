@@ -30,7 +30,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_l
     os.makedirs(LOG_PATH, exist_ok=True)
 
     print(f'Configuration:\n model_name: {model_name} \n max epochs: {epochs}\n patience: {patience}'
-          f'\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n l_rate: {l_rate}\n '
+          f'\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n l_decay: {l_decay}\n '
           f'cf_hidden_dim: {cf_hidden_dim}\n dataset_name: {dataset_name}\n')
 
     pl.seed_everything(seed)
