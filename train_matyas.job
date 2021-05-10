@@ -17,6 +17,6 @@ module load Anaconda3
 
 source activate atcs-project
 
-PARAMETERS_FILE=h_search.txt
+PARAMETERS_FILE=h_search_matyas.txt
 
 srun python -u train.py $(head -$SLURM_ARRAY_TASK_ID $PARAMETERS_FILE | tail -1)

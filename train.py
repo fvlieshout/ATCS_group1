@@ -150,25 +150,12 @@ def get_dataset(dataset_name):
         raise ValueError("Dataset '%s' is not supported." % dataset_name)
 
 
-# class LearningRateStopping(pl.Callback):
-#
-#     def __init__(self, min_value):
-#         super().__init__()
-#         self.min_value = min_value
-#
-#     def on_validation_end(self, trainer, pl_module):
-#         current_lr = trainer.optimizers[0].param_groups[0]['lr']
-#         if current_lr is not None and current_lr <= self.min_value:
-#             print('Stopping training current LR ' + str(current_lr) + ' min LR ' + str(self.min_value))
-#             trainer.should_stop = True
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     # TRAINING PARAMETERS
 
-    parser.add_argument('--epochs', dest='epochs', type=int, default=40)
+    parser.add_argument('--epochs', dest='epochs', type=int, default=50)
     parser.add_argument('--patience', dest='patience', type=int, default=10)
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
     parser.add_argument('--lr', dest='l_rate', type=float, default=1e-4)
