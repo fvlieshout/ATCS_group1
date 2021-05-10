@@ -5,13 +5,12 @@ import time
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
 import torch
+from data_prep.reuters_text import R8Text, R52Text
+from models.model import ClassifierModule
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
-
-from data_prep.reuters_text import R8Text, R52Text
-from models.model import ClassifierModule
 
 # disable parallelism for hugging face to avoid deadlocks
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -106,7 +105,8 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
     test_elapsed = test_end - test_start
 
     print(f'\nRequired time for testing: {int(test_elapsed / 60)} minutes.\n')
-    print(f'Test Results:\n test accuracy: {test_accuracy}\n validation accuracy: {val_accuracy}'
+    print(f'Test Results:\n test accuracy: {round(test_accuracy, 3)} ({test_accuracy})\n '
+          f'validation accuracy: {round(val_accuracy, 3)} ({val_accuracy})'
           f'\n epochs: {trainer.current_epoch + 1}\n')
 
     return test_accuracy, val_accuracy
