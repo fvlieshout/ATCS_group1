@@ -2,9 +2,8 @@
 import torch
 from data_prep.dataset import TextDataset
 from datasets import load_dataset
-# from transformers.data.data_collator import default_data_collator
 
-class AGNews(TextDataset):
+class AGNewsText(TextDataset):
     def __init__(self, texts, labels, classes, tokenizer):
         self.texts = texts
         self.labels = labels
@@ -21,9 +20,9 @@ class AGNews(TextDataset):
             val_size (float, optional): Proportion of training sample to include in the validation set.
 
         Returns:
-            train_split (Dataset): Training split.
-            test_split (Dataset): Test split.
-            val_split (Dataset): Validation split.
+            train_split (TextDataset): Training split.
+            test_split (TextDataset): Test split.
+            val_split (TextDataset): Validation split.
         """
 
         dataset = load_dataset("ag_news")
