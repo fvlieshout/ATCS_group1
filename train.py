@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
 
 from data_prep.reuters_text import R8Text, R52Text
+from data_prep.imdb_text import IMDbText
 from models.model import ClassifierModule
 
 # disable parallelism for hugging face to avoid deadlocks
@@ -22,7 +23,7 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 LOG_PATH = "./logs/"
 
 SUPPORTED_MODELS = ['roberta']
-SUPPORTED_DATASETS = ['R8Text', 'R52Text']
+SUPPORTED_DATASETS = ['R8Text', 'R52Text', 'IMDbText']
 
 
 def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim,
@@ -146,6 +147,8 @@ def get_dataset(dataset_name):
         return R8Text
     elif dataset_name == "R52Text":
         return R52Text
+    elif dataset_name == "IMDbText":
+        return IMDbText
     else:
         raise ValueError("Dataset '%s' is not supported." % dataset_name)
 
