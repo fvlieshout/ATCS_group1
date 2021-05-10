@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import torch
-from torch.utils.data import Dataset
+from data_prep.dataset import TextDataset
 from datasets import load_dataset
 # from transformers.data.data_collator import default_data_collator
 
-class AGNews(Dataset):
+class AGNews(TextDataset):
     def __init__(self, texts, labels, classes, tokenizer):
         self.texts = texts
         self.labels = labels
@@ -63,6 +63,10 @@ class AGNews(Dataset):
 
             return items
         return collate_fn
+    
+    @property
+    def num_classes(self):
+        return len(self.classes)
     
     def __getitem__(self, idx):
         item = {

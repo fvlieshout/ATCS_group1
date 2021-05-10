@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
 
 from data_prep.reuters_text import R8Text, R52Text
+from data_prep.agnews_text import AGNews
 from models.model import ClassifierModule
 
 # disable parallelism for hugging face to avoid deadlocks
