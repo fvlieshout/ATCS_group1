@@ -6,7 +6,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 
 def word_windows(corpus, window_size=15):
-    """Generate all word windows of a specific size, in the corpus. Implemented as https://github.com/yao8839836/text_gcn/blob/master/build_graph.py#L379
+    """
+    Generate all word windows of a specific size, in the corpus.
+    Implemented as https://github.com/yao8839836/text_gcn/blob/master/build_graph.py#L379
 
     Args:
         corpus (list): List of documents represented each as tokenized words.
@@ -26,8 +28,11 @@ def word_windows(corpus, window_size=15):
                 windows.append(window)
     return windows
 
+
 def word_frequency(windows):
-    """#W(i) is the number of sliding windows in a corpus that contain word i. Implemented as https://github.com/yao8839836/text_gcn/blob/master/build_graph.py#L396
+    """
+    #W(i) is the number of sliding windows in a corpus that contain word i.
+    Implemented as https://github.com/yao8839836/text_gcn/blob/master/build_graph.py#L396
 
     Args:
         windows (list): Word windows
@@ -46,9 +51,10 @@ def word_frequency(windows):
             appeared.add(word)
     return word_window_freq
 
-#
+
 def word_pair_frequency(windows):
-    """#W(i,j) is the number of sliding windows that contain both word i and j.
+    """
+    #W(i,j) is the number of sliding windows that contain both word i and j.
 
     Args:
         windows (list): Word windows
@@ -64,8 +70,10 @@ def word_pair_frequency(windows):
             word_pair_freq[tuple(sorted(pair))] += 1
     return word_pair_freq
 
-def PMI(corpus, window_size=15):
-    """Computes PMI scores.
+
+def pmi(corpus, window_size=15):
+    """
+    Computes PMI scores.
 
     Args:
         corpus (list): List of documents represented each as tokenized words.
@@ -79,7 +87,7 @@ def PMI(corpus, window_size=15):
     word_freq = word_frequency(windows)
     word_pair_freq = word_pair_frequency(windows)
 
-    pmi  = {}
+    pmi = {}
     for (word_i, word_j), w_ij in word_pair_freq.items():
         # log((w(i,j)/w) / ((w(i)/w) * (w(j)/w))) = log(w(i,j)) - log(w(i)) - log(w(j)) + log(w)
         w_i = word_freq[word_i]
@@ -102,7 +110,7 @@ def tf_idf_mtx(corpus):
         mtx: Sparse matrix containing tf.idf scores.
         words: List of all words in the order as they appear as columns in the matrix.
     """
-    vectorizer = TfidfVectorizer(lowercase=False, tokenizer=lambda x : x)
+    vectorizer = TfidfVectorizer(lowercase=False, tokenizer=lambda x: x)
     mtx = vectorizer.fit_transform(corpus)
     words = vectorizer.get_feature_names()
 
