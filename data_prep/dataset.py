@@ -2,8 +2,10 @@ import abc
 import random
 from collections import defaultdict
 
+import torch
 import torch.utils.data as data
 from nltk.corpus import reuters
+from datasets import load_dataset
 
 
 class Dataset(data.Dataset, metaclass=abc.ABCMeta):
@@ -87,3 +89,78 @@ class Reuters(Dataset):
         # sort the unique classes to ensure constant order
         unique_classes = sorted(data.keys())
         return (train_docs, test_docs, val_docs), unique_classes
+
+class HuggingFaceDataset(TextDataset):
+    """
+    Parent class HuggingFace text datasets.
+    """
+    def __init__(self, texts, labels, classes, tokenizer):
+        self.texts = texts
+        self.labels = labels
+        self.classes = classes
+        self.tokenizer = tokenizer
+    
+    @classmethod
+    def splits(cls, tokenizer, dataset_name="ag_news", val_size=0.1):
+        """
+        Creates the train, test, and validation splits for HuggingFace dataset.
+        Args:
+            dataset_name (String): Name of the hugging face dataset (https://huggingface.co/datasets)
+            tokenizer (Tokenizer): Hugging Face tokenizer to encode the 3 dataset splits.
+            val_size (float, optional): Proportion of training sample to include in the validation set.
+        Returns:
+            train_split (TextDataset): Training split.
+            test_split (TextDataset): Test split.
+            val_split (TextDataset): Validation split.
+        """
+        dataset = load_dataset(dataset_name)
+        train_val_splits = dataset["train"].train_test_split(test_size=val_size)
+
+        train_split = cls.get_split(tokenizer, train_val_splits["train"])
+        val_split = cls.get_split(tokenizer, train_val_splits["test"])
+        test_split = cls.get_split(tokenizer, dataset["test"])
+        
+        return train_split, test_split, val_split
+
+    
+    @classmethod
+    def get_split(cls, tokenizer, dataset):
+        texts, labels = cls._prepare_split(dataset)
+        unique_cls = dataset.features["label"].names
+        return cls(texts, labels, unique_cls, tokenizer)
+    
+    @staticmethod
+    def _prepare_split(dataset):
+        texts = []
+        labels = []
+        for data in dataset:
+            texts.append(data["text"])
+            labels.append(data["label"])
+
+        return texts, labels
+    
+    def get_collate_fn(self):
+        def collate_fn(batch):
+            texts = [data["text"] for data in batch]
+            labels = [data["label"] for data in batch]
+            encodings = self.tokenizer(texts, truncation=True, padding=True)
+            
+            items = {key: torch.tensor(val) for key, val in encodings.items()}
+            items["labels"] = torch.tensor(labels)
+
+            return items
+        return collate_fn
+    
+    @property
+    def num_classes(self):
+        return len(self.classes)
+    
+    def __getitem__(self, idx):
+        item = {
+            "text": self.texts[idx],
+            "label": self.labels[idx]
+        }
+        return item
+    
+    def __len__(self):
+        return len(self.labels)
