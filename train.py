@@ -11,6 +11,7 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
+from pytorch_lightning.callbacks import LearningRateMonitor
 
 # disable parallelism for hugging face to avoid deadlocks
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -24,13 +25,13 @@ SUPPORTED_MODELS = ['roberta']
 SUPPORTED_DATASETS = ['R8Text', 'R52Text']
 
 
-def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim,
+def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, weight_decay, cf_hidden_dim,
           dataset_name='R8Text'):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     print(f'Configuration:\n model_name: {model_name} \n max epochs: {epochs}\n patience: {patience}'
           f'\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n l_decay: {l_decay}\n '
-          f'cf_hidden_dim: {cf_hidden_dim}\n dataset_name: {dataset_name}\n')
+          f'weight_decay: {weight_decay}\n cf_hidden_dim: {cf_hidden_dim}\n dataset_name: {dataset_name}\n')
 
     pl.seed_everything(seed)
 
@@ -54,11 +55,11 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_l
         raise ValueError("Model type '%s' is not supported." % model_name)
 
     model_params = {'model': model_name, "num_classes": train_dataset.num_classes, "cf_hid_dim": cf_hidden_dim}
-    optimizer_hparams = {"lr": l_rate, "weight_decay": l_decay}
+    optimizer_hparams = {"lr": l_rate, "weight_decay": weight_decay, "lr_decay": l_decay}
 
     model = ClassifierModule(model_params, optimizer_hparams)
 
-    trainer = initialize_trainer(epochs, patience, minimum_lr, model_name, l_rate, l_decay)
+    trainer = initialize_trainer(epochs, patience, model_name, l_rate, l_decay, weight_decay)
 
     # Training
     print('Fitting model ..........\n')
@@ -112,12 +113,12 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
     return test_accuracy, val_accuracy
 
 
-def initialize_trainer(epochs, patience, minimum_lr, model_name, l_rate, l_decay):
+def initialize_trainer(epochs, patience, model_name, l_rate, l_decay, weight_decay):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
     os.makedirs(LOG_PATH, exist_ok=True)
 
-    version_str = f'patience={patience}_lr={l_rate}_ldec={l_decay}'
+    version_str = f'patience={patience}_lr={l_rate}_ldec={l_decay}_wdec={weight_decay}'
     logger = TensorBoardLogger(LOG_PATH, name=model_name, version=version_str)
 
     early_stop_callback = EarlyStopping(
@@ -132,7 +133,7 @@ def initialize_trainer(epochs, patience, minimum_lr, model_name, l_rate, l_decay
                          checkpoint_callback=model_checkpoint,
                          gpus=1 if torch.cuda.is_available() else 0,
                          max_epochs=epochs,
-                         callbacks=[early_stop_callback],
+                         callbacks=[early_stop_callback, LearningRateMonitor("epoch")],
                          progress_bar_refresh_rate=1)
 
     # Optional logging argument that we don't need
@@ -160,7 +161,9 @@ if __name__ == "__main__":
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
     parser.add_argument('--lr', dest='l_rate', type=float, default=1e-4)
     parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=1e-5, help="Minimum Learning Rate")
-    parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=1e-3, help="Learning rate (weight) decay")
+    parser.add_argument("--weight-decay", dest='weight_decay', type=float, default=1e-3,
+                        help="Weight decay for L2 regularization of optimizer AdamW")
+    parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=0.99, help="Learning rate decay")
 
     # CONFIGURATION
 
@@ -181,7 +184,7 @@ if __name__ == "__main__":
         b_size=params["batch_size"],
         l_rate=params["l_rate"],
         l_decay=params["lr_decay"],
-        minimum_lr=params["minimum_lr"],
+        weight_decay=params["weight_decay"],
         cf_hidden_dim=params["cf_hidden_dim"],
         dataset_name=params["dataset"]
     )
