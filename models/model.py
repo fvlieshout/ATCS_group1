@@ -27,6 +27,8 @@ class ClassifierModule(pl.LightningModule):
 
         self.model = DocumentClassifier(model_hparams)
 
+        self.lr_scheduler = None
+
     def forward(self, batch):
         return self.model(batch['input_ids'], batch['attention_mask']), batch['labels']
 
@@ -38,9 +40,13 @@ class ClassifierModule(pl.LightningModule):
         step_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1,
                                                    gamma=self.hparams.optimizer_hparams['lr_decay'])
 
-        lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=100, max_iters=2000)
+        self.lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=100, max_iters=2000)
 
-        return [optimizer], [step_scheduler, lr_scheduler]
+        return [optimizer], [step_scheduler]
+
+    def optimizer_step(self, *args, **kwargs):
+        super().optimizer_step(*args, **kwargs)
+        self.lr_scheduler.step()  # Step per iteration
 
     def training_step(self, batch, batch_idx):
         """
