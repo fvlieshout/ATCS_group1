@@ -8,21 +8,23 @@ from datasets import load_dataset
 
 
 class AGNewsGraph(GraphDataset):
-    def __init__(self, device, val_size=0.1):
+    def __init__(self, device, val_size=0.1, train_doc=None):
         """
         Creates the train, test, and validation splits for AGNews.
         Args:
             device (Device): Device to use to store the dataset.
             val_size (float, optional): Proportion of training documents to include in the validation set.
+            train_doc (int, optional): Number of documents to use from the training set. If None, include all.
         Returns:
             train_split (Dataset): Training split.
             test_split (Dataset): Test split.
             val_split (Dataset): Validation split.
         """
         self.device = device
+        self.train_doc = train_doc
 
         print('Prepare AGNews dataset')
-        docs, labels, classes = self.prepare_agnews(val_size)
+        docs, labels, classes = self.prepare_agnews(val_size, train_doc)
         train_docs, test_docs, val_docs = docs
         train_labels, test_labels, val_labels = labels
 
@@ -71,11 +73,12 @@ class AGNewsGraph(GraphDataset):
         self.data.test_mask = test_mask
 
     @staticmethod
-    def prepare_agnews(val_size=0.1):
+    def prepare_agnews(val_size=0.1, train_doc=None):
         """
         Return the training, validation, and tests splits along with the classes of AGNews dataset.
         Args:
             val_size (float, optional): Proportion of training documents to include in the validation set.
+            train_doc (int, optional): Number of documents to use from the training set. If None, include all.
         Returns:
             splits (tuple): Tuple containing 3 list of strings for training, test, and validation datasets.
             labels (tuple): Tuple containing 3 list of labels for training, test, and validation datasets.
@@ -94,10 +97,14 @@ class AGNewsGraph(GraphDataset):
 
         unique_classes = train_val_splits["train"].features["label"].names
 
-         # For testing with only a few docs:
-        docs = (list(train_texts[:1000]), list(test_texts[:100]), list(val_texts[:100]))
-        labels = (list(train_labels[:1000]), list(test_labels[:100]), list(val_labels[:100]))
-
+        if train_doc is not None:
+            # For testing with only a few docs:
+            test_val_num_docs = int(val_size * train_doc)
+            docs = (list(train_texts[:train_doc]), list(test_texts[:test_val_num_docs]), list(val_texts[:test_val_num_docs]))
+            labels = (list(train_labels[:train_doc]), list(test_labels[:test_val_num_docs]), list(val_labels[:test_val_num_docs]))
+        else:
+            docs = (list(train_texts), list(test_texts), list(val_texts))
+            labels = (list(train_labels), list(test_labels), list(val_labels))
         
         return docs, labels, unique_classes
     
