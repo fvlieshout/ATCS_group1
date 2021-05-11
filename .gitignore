@@ -12,6 +12,8 @@ events.out.*
 __pycache__/
 *.py[cod]
 *$py.class
+*.ckpt
+events.out.*
 
 # C extensions
 *.so
