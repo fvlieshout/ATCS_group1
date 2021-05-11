@@ -7,11 +7,11 @@ from nltk.corpus import reuters
 import torch
 from torch_geometric.data import Data, Dataset
 
-from datasets.graph_utils import PMI, tf_idf_mtx
+from data_prep.graph_utils import PMI, tf_idf_mtx
 
 
 class Reuters(Dataset):
-    def __init__(self, root, device, r8=False, val_size=0.1, transform=None, pre_transform=None):
+    def __init__(self, root, device, r8=False, val_size=0.1, mode='train', transform=None, pre_transform=None):
         """
         Creates the train, test, and validation splits for R52 or R8.
         Args:
@@ -25,6 +25,7 @@ class Reuters(Dataset):
         """
         super(Reuters, self).__init__(root, transform, pre_transform)
         self.device = device
+        self.mode = mode
 
         print('Prepare Reuters dataset')
         (train_docs, test_docs, val_docs), classes = self.prepare_reuters(r8, val_size)
@@ -179,7 +180,7 @@ class Reuters(Dataset):
         unique_classes = sorted(data.keys())
 
         # For testing with only a few docs:
-        return (train_docs[:10], test_docs[:10], val_docs[:10]), unique_classes
+        return (train_docs[:200], test_docs[:20], val_docs[:20]), unique_classes
 
         return (train_docs, test_docs, val_docs), unique_classes
     
