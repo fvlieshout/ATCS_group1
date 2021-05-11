@@ -180,7 +180,7 @@ class Reuters(Dataset):
         unique_classes = sorted(data.keys())
 
         # For testing with only a few docs:
-        return (train_docs[:200], test_docs[:20], val_docs[:20]), unique_classes
+        # return (train_docs[:200], test_docs[:20], val_docs[:20]), unique_classes
 
         return (train_docs, test_docs, val_docs), unique_classes
     
