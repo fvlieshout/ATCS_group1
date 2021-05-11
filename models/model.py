@@ -1,7 +1,6 @@
 import math
 
 import pytorch_lightning as pl
-import pytorch_warmup as warmup
 from torch import nn
 from torch import optim
 from torch.optim import AdamW
