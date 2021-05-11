@@ -1,5 +1,6 @@
 import math
 
+import numpy as np
 import pytorch_lightning as pl
 from torch import nn
 from torch import optim
@@ -26,10 +27,6 @@ class ClassifierModule(pl.LightningModule):
 
         self.model = DocumentClassifier(model_hparams)
 
-        # self.warmup_scheduler = None
-
-        self.warmup_phase = 1000
-
     def forward(self, batch):
         return self.model(batch['input_ids'], batch['attention_mask']), batch['labels']
 
@@ -40,11 +37,10 @@ class ClassifierModule(pl.LightningModule):
         # Disabling it for now as it prevented the model somehow to actually learn
         step_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1,
                                                    gamma=self.hparams.optimizer_hparams['lr_decay'])
-        # warmup_scheduler = LearningRateWarmup(optimizer)
 
-        # self.warmup_scheduler = warmup.RAdamWarmup(optimizer)
+        lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=100, max_iters=2000)
 
-        return [optimizer], [step_scheduler]
+        return [optimizer], [step_scheduler, lr_scheduler]
 
     def training_step(self, batch, batch_idx):
         """
@@ -61,22 +57,6 @@ class ClassifierModule(pl.LightningModule):
 
         return loss
 
-    def training_step_end(self, training_step_outputs):
-        # TODO: call learning rate warmup
-
-        lr = self.optimizers().param_groups[0]['lr']
-        # print('global Step ' + str(self.global_step))
-        # print('LR before ' + str(lr))
-
-        # self.warmup_scheduler.dampen()
-        omega = (1 - math.exp(-self.global_step / self.warmup_phase))
-        # print('warmup factor ' + str(omega))
-
-        if omega != 0:
-            self.optimizers().param_groups[0]['lr'] = omega * self.hparams.optimizer_hparams['lr']
-
-        # print('LR after ' + str(self.optimizers().param_groups[0]['lr']))
-
     def validation_step(self, batch, batch_idx):
         # By default logs it per epoch (weighted average over batches)
         self.log('val_accuracy', self.accuracy(*self.forward(batch)))
@@ -89,6 +69,24 @@ class ClassifierModule(pl.LightningModule):
     def accuracy(predictions, labels):
         # noinspection PyUnresolvedReferences
         return (labels == predictions.argmax(dim=-1)).float().mean()
+
+
+class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
+
+    def __init__(self, optimizer, warmup, max_iters):
+        self.warmup = warmup
+        self.max_num_iters = max_iters
+        super().__init__(optimizer)
+
+    def get_lr(self):
+        lr_factor = self.get_lr_factor(epoch=self.last_epoch)
+        return [base_lr * lr_factor for base_lr in self.base_lrs]
+
+    def get_lr_factor(self, epoch):
+        lr_factor = 0.5 * (1 + np.cos(np.pi * epoch / self.max_num_iters))
+        if epoch <= self.warmup:
+            lr_factor *= epoch * 1.0 / self.warmup
+        return lr_factor
 
 
 class DocumentClassifier(nn.Module):
@@ -115,36 +113,6 @@ class DocumentClassifier(nn.Module):
         out = self.encoder(inputs, attention_mask)
         out = self.classifier(out)
         return out
-
-
-# class LearningRateWarmup(optim.lr_scheduler._LRScheduler):
-#
-#     def __init__(self, optimizer, warmup_epochs=10, warmup_start_lr=0.0, last_epoch=-1, verbose=False):
-#         self.warmup_epochs = warmup_epochs
-#         self.warmup_start_lr = warmup_start_lr
-#         self.count = 0
-#         super(LearningRateWarmup, self).__init__(optimizer, last_epoch, verbose)
-#
-#     def get_lr(self):
-#         if not self._get_lr_called_within_step:
-#             warnings.warn("To get the last learning rate computed by the scheduler, please use `get_last_lr()`.",
-#                           UserWarning)
-#
-#         if self.last_epoch > self.warmup_epochs:
-#             return [group['lr'] for group in self.optimizer.param_groups]
-#
-#         print('LR before ' + str(self.optimizer.param_groups[0]['lr']))
-#
-#         self.count += 1
-#         omega = 1.0 - math.exp(-self.count / self.warmup_epochs)
-#
-#         print('LR before ' + str(self.optimizer.param_groups[0]['lr'] * omega))
-#
-#         return [group['lr'] * omega for group in self.optimizer.param_groups]
-#
-#     # def _get_closed_form_lr(self):
-#     #     return [base_lr * self.gamma ** (self.last_epoch // self.step_size)
-#     #             for base_lr in self.base_lrs]
 
 
 class TransformerModel(nn.Module):

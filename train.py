@@ -1,4 +1,5 @@
 import argparse
+import math
 import os
 import time
 
@@ -7,11 +8,11 @@ import pytorch_lightning.callbacks as cb
 import torch
 from data_prep.reuters_text import R8Text, R52Text
 from models.model import ClassifierModule
+from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
-from pytorch_lightning.callbacks import LearningRateMonitor
 
 # disable parallelism for hugging face to avoid deadlocks
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
