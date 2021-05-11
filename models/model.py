@@ -1,8 +1,11 @@
 import pytorch_lightning as pl
+import torch
 from torch import nn
 from torch import optim
 from torch.optim import AdamW
 from transformers import RobertaModel
+import torch.nn.functional as F
+from torch_geometric.nn import GCNConv
 
 
 class ClassifierModule(pl.LightningModule):
@@ -118,3 +121,66 @@ class TransformerModel(nn.Module):
         cls_token_state = hidden_states[1]
 
         return cls_token_state
+
+class Net(torch.nn.Module):
+    def __init__(self, num_nodes):
+        super(Net, self).__init__()
+        self.conv1 = GCNConv(num_nodes, 200)
+        self.conv2 = GCNConv(200, 8)
+
+    def forward(self, data):
+        x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
+        x = self.conv1(x, edge_index, edge_weight)
+        x = F.relu(x)
+        x = F.dropout(x, training=self.training)
+        x = self.conv2(x, edge_index, edge_weight)
+        return x
+
+class Graph_model(pl.LightningModule):
+    def __init__(self, num_nodes, optimizer_hparams):
+        super().__init__()
+        device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+        self.model = Net(num_nodes).to(device)
+        self.test_val_mode = 'test'
+        self.save_hyperparameters()
+    
+    def forward(self, data, mode):
+        out = self.model(data)
+        if mode=='train':
+            mask = data.train_mask
+        elif mode=='val':
+            mask = data.val_mask
+        elif mode=='test':
+            mask = data.test_mask
+        loss = F.cross_entropy(out[mask], data.y[mask])
+        # loss = F.nll_loss(out[data.train_mask], data.y[data.train_mask])
+        class_predictions = torch.argmax(out, dim=1)
+        if mode=='val':
+            print('preds:', class_predictions[:20])
+            print('real:', data.y[:20])
+        correct = (class_predictions[mask] == data.y[mask]).sum().item()
+        accuracy = correct / mask.sum()
+        # if math.isnan(loss.item()):
+        #     print()
+        return loss, accuracy
+    
+    def configure_optimizers(self):
+        self.optimizer = torch.optim.Adam(self.parameters(), **self.hparams.optimizer_hparams)
+        # self.optimizer = torch.optim.Adam(self.parameters(), lr=0.01)
+        return self.optimizer
+
+    def training_step(self, batch, batch_idx):
+        loss, acc = self.forward(batch, mode='train')
+        self.log("train_loss", loss, on_step=False, on_epoch=True)
+        self.log("train_accuracy", acc, on_step=False, on_epoch=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        loss, acc = self.forward(batch, mode='val')
+        # self.log("val_loss", loss)
+        self.log("val_accuracy", acc)
+
+    def test_step(self, batch, batch_idx):
+        loss, acc = self.forward(batch, mode=self.test_val_mode)
+        # self.log("test_loss", loss)
+        self.log("test_accuracy", acc)
