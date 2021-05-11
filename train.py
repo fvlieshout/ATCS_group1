@@ -178,7 +178,7 @@ class LearningRateStopping(pl.Callback):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)dim', dest='cf_hidden_dim', type=int, default=512)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     # TRAINING PARAMETERS
 
