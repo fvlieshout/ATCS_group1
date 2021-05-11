@@ -1,4 +1,4 @@
---model roberta --lr 5e-3 --weight-decay 2e-5 --lr-decay 0.99
---model roberta --lr 5e-3 --weight-decay 1e-4 --lr-decay 0.99
---model roberta --lr 4e-5 --weight-decay 1e-3 --lr-decay 0.99
---model roberta --lr 5e-5 --weight-decay 1e-3 --lr-decay 0.99
+--model roberta --lr 5e-3 --weight-decay 2e-5 --lr-decay 0.99 --epochs 30
+--model roberta --lr 5e-3 --weight-decay 1e-4 --lr-decay 0.99 --epochs 30
+--model roberta --lr 4e-5 --weight-decay 1e-3 --lr-decay 0.99 --epochs 30
+--model roberta --lr 5e-5 --weight-decay 1e-3 --lr-decay 0.99 --epochs 30
