@@ -5,15 +5,13 @@ get_imports.job
 floor_test.py
 gnn-env.yml
 environment_Lisa*
-*.ckpt
-events.out.*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-events.out.*
 *.ckpt
+events.out.*
 
 # C extensions
 *.so
