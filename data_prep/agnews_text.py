@@ -43,12 +43,8 @@ class AGNewsText(TextDataset):
     
     @staticmethod
     def _prepare_split(dataset):
-        texts = []
-        labels = []
-        for data in dataset:
-            texts.append(data["text"])
-            labels.append(data["label"])
-
+        texts = [data["text"] for data in dataset]
+        labels = [data["label"] for data in dataset]
         return texts, labels
     
     def get_collate_fn(self):

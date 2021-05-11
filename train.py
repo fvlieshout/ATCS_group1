@@ -147,7 +147,7 @@ def get_dataset(dataset_name):
         return R8Text
     elif dataset_name == "R52Text":
         return R52Text
-    elif dataset_name == "AGNews":
+    elif dataset_name == "AGNewsText":
         return AGNewsText
     else:
         raise ValueError("Dataset '%s' is not supported." % dataset_name)
