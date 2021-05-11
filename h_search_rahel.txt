@@ -1,12 +1,4 @@
---model roberta --lr 1e-3 --lr-decay 2e-3
---model roberta --lr 1e-3 --lr-decay 5e-1
---model roberta --lr 2e-5 --lr-decay 5e-1 --patience 15
---model roberta --lr 3e-5 --lr-decay 1e-4 --patience 15
---model roberta --lr 3e-5 --lr-decay 1e-3 --patience 15
---model roberta --lr 3e-5 --lr-decay 2e-3 --patience 15
---model roberta --lr 3e-5 --lr-decay 5e-1 --patience 15
---model roberta --lr 1e-4 --lr-decay 5e-1 --patience 15
---model roberta --lr 5e-4 --lr-decay 1e-4 --patience 15
---model roberta --lr 5e-4 --lr-decay 1e-3 --patience 15
---model roberta --lr 5e-4 --lr-decay 2e-3 --patience 15
---model roberta --lr 5e-4 --lr-decay 5e-1 --patience 15
+--model roberta --lr 1e-3 --weight-decay 1e-3 --lr-decay 0.99
+--model roberta --lr 1e-3 --weight-decay 2e-3 --lr-decay 0.99
+--model roberta --lr 5e-3 --weight-decay 1e-3 --lr-decay 0.99
+--model roberta --lr 5e-3 --weight-decay 2e-3 --lr-decay 0.99
