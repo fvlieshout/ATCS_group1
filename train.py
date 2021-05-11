@@ -11,7 +11,9 @@ from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
 
 from data_prep.reuters_text import R8Text, R52Text
-from models.model import ClassifierModule
+from data_prep.reuters_graph_datasets import R8, R52
+from models.model import ClassifierModule, Graph_model
+import torch_geometric.data as geom_data
 
 # disable parallelism for hugging face to avoid deadlocks
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -38,6 +40,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_l
     # the data preprocessing per model
 
     dataset = get_dataset(dataset_name)
+    optimizer_hparams = {"lr": l_rate, "weight_decay": l_decay}
 
     if model_name == 'roberta':
 
@@ -50,14 +53,17 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_l
         train_dataloader = data_loader(b_size, train_dataset, shuffle=True)
         test_dataloader = data_loader(b_size, test_dataset)
         val_dataloader = data_loader(b_size, val_dataset)
+        model_params = {'model': model_name, "num_classes": train_dataset.num_classes, "cf_hid_dim": cf_hidden_dim}
+        model = ClassifierModule(model_params, optimizer_hparams)
+    
+    elif model_name == 'pure_gnn':
+        train_dataloader = geom_data.DataLoader(dataset, batch_size=1)
+        val_dataloader = geom_data.DataLoader(dataset, batch_size=1)
+        test_dataloader = geom_data.DataLoader(dataset, batch_size=1)
+        model = Graph_model(len(dataset.iton), optimizer_hparams)
 
     else:
         raise ValueError("Model type '%s' is not supported." % model_name)
-
-    model_params = {'model': model_name, "num_classes": train_dataset.num_classes, "cf_hid_dim": cf_hidden_dim}
-    optimizer_hparams = {"lr": l_rate, "weight_decay": l_decay}
-
-    model = ClassifierModule(model_params, optimizer_hparams)
 
     trainer = initialize_trainer(epochs, patience, minimum_lr, model_name, l_rate, l_decay)
 
@@ -96,11 +102,14 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
 
     test_start = time.time()
 
+    model.test_val_mode = 'test'
     test_result = trainer.test(model, test_dataloaders=test_dataloader, verbose=False)[0]
     test_accuracy = test_result["test_accuracy"]
 
+    model.test_val_mode = 'val'
     val_result = trainer.test(model, test_dataloaders=val_dataloader, verbose=False)[0]
     val_accuracy = val_result["test_accuracy"] if "val_accuracy" not in val_result else val_result["val_accuracy"]
+    model.test_val_mode = 'test'
 
     test_end = time.time()
     test_elapsed = test_end - test_start
@@ -142,10 +151,15 @@ def initialize_trainer(epochs, patience, minimum_lr, model_name, l_rate, l_decay
 
 
 def get_dataset(dataset_name):
+    device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
     if dataset_name == "R8Text":
         return R8Text
     elif dataset_name == "R52Text":
         return R52Text
+    elif dataset_name =='R8Graph':
+        return R8(device)
+    elif dataset_name =='R52Graph':
+        return R52(device)
     else:
         raise ValueError("Dataset '%s' is not supported." % dataset_name)
 
@@ -164,22 +178,26 @@ class LearningRateStopping(pl.Callback):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)dim', dest='cf_hidden_dim', type=int, default=512)
 
     # TRAINING PARAMETERS
 
-    parser.add_argument('--epochs', dest='epochs', type=int, default=40)
+    parser.add_argument('--epochs', dest='epochs', type=int, default=20)
     parser.add_argument('--patience', dest='patience', type=int, default=10)
-    parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
-    parser.add_argument('--lr', dest='l_rate', type=float, default=1e-4)
-    parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=1e-5, help="Minimum Learning Rate")
-    parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=1e-3, help="Learning rate (weight) decay")
+    #batch_size 1 for graph networks
+    # parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
+    parser.add_argument('--batch-size', dest='batch_size', type=int, default=1)
+    #higher learning rate for graph models
+    # parser.add_argument('--lr', dest='l_rate', type=float, default=1e-4)
+    parser.add_argument('--lr', dest='l_rate', type=float, default=0.01)
+    parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=0.001, help="Minimum Learning Rate")
+    parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=0.01, help="Learning rate (weight) decay")
 
     # CONFIGURATION
 
-    parser.add_argument('--dataset', dest='dataset', default='R8Text', choices=SUPPORTED_DATASETS,
+    parser.add_argument('--dataset', dest='dataset', default='R8Graph', choices=SUPPORTED_DATASETS,
                         help='Select the dataset you want to use.')
-    parser.add_argument('--model', dest='model', default='roberta', choices=SUPPORTED_MODELS,
+    parser.add_argument('--model', dest='model', default='pure_gnn', choices=SUPPORTED_MODELS,
                         help='Select the model you want to use.')
     parser.add_argument('--seed', dest='seed', type=int, default=1234)
     parser.add_argument('--cf-hidden-dim', dest='cf_hidden_dim', type=int, default=512)

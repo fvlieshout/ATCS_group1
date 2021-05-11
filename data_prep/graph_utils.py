@@ -71,7 +71,7 @@ def word_pair_frequency(windows):
     return word_pair_freq
 
 
-def pmi(corpus, window_size=15):
+def PMI(corpus, window_size=15):
     """
     Computes PMI scores.
 
