@@ -1,8 +1,0 @@
---model roberta --lr 1e-4 --weight-decay 1e-3 --warmup 300
---model roberta --lr 1e-4 --weight-decay 2e-3 --warmup 300
---model roberta --lr 1e-4 --weight-decay 1e-3 --warmup 400
---model roberta --lr 1e-4 --weight-decay 2e-3 --warmup 400
---model roberta --lr 1e-4 --weight-decay 1e-3 --warmup 500
---model roberta --lr 1e-4 --weight-decay 2e-3 --warmup 500
---model roberta --lr 1e-4 --weight-decay 1e-3 --warmup 600
---model roberta --lr 1e-4 --weight-decay 2e-3 --warmup 600
