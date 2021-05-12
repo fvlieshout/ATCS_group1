@@ -23,11 +23,11 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 LOG_PATH = "./logs/"
 
-SUPPORTED_MODELS = ['roberta']
-SUPPORTED_DATASETS = ['R8Text', 'R52Text']
+SUPPORTED_MODELS = ['roberta', 'gnn']
+SUPPORTED_DATASETS = ['R8Text', 'R52Text', 'R8Graph', 'R52Graph']
 
 
-def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim,
+def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, minimum_lr, cf_hidden_dim,
           dataset_name='R8Text'):
     os.makedirs(LOG_PATH, exist_ok=True)
 
@@ -40,7 +40,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_l
     # the data preprocessing per model
 
     dataset = get_dataset(dataset_name)
-    optimizer_hparams = {"lr": l_rate, "weight_decay": l_decay}
+    optimizer_hparams = {"lr": l_rate, "weight_decay": w_decay}
 
     if model_name == 'roberta':
 
@@ -184,11 +184,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--epochs', dest='epochs', type=int, default=20)
     parser.add_argument('--patience', dest='patience', type=int, default=10)
-    #batch_size 1 for graph networks
-    # parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=1)
-    #higher learning rate for graph models
-    # parser.add_argument('--lr', dest='l_rate', type=float, default=1e-4)
     parser.add_argument('--lr', dest='l_rate', type=float, default=0.01)
     parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=0.001, help="Minimum Learning Rate")
     parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=0.01, help="Learning rate (weight) decay")
