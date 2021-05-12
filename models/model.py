@@ -123,7 +123,7 @@ class TransformerModel(nn.Module):
         return cls_token_state
 
 class GraphNet(torch.nn.Module):
-    def __init__(self, num_nodes):
+    def __init__(self):
         super(GraphNet, self).__init__()
         self.linlay = nn.Linear(300, 768)
         self.conv1 = GCNConv(768, 200)

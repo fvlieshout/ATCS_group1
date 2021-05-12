@@ -23,7 +23,7 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 LOG_PATH = "./logs/"
 
-SUPPORTED_MODELS = ['roberta', 'gnn']
+SUPPORTED_MODELS = ['roberta', 'pure_gnn', 'roberta_gnn']
 SUPPORTED_DATASETS = ['R8Text', 'R52Text', 'R8Graph', 'R52Graph']
 
 
@@ -195,7 +195,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=1)
     parser.add_argument('--lr', dest='l_rate', type=float, default=0.01)
     parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=0.001, help="Minimum Learning Rate")
-    parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=0.01, help="Learning rate (weight) decay")
+    parser.add_argument("--w-decay", dest='w_decay', type=float, default=0.01, help="Weight decay")
 
     # CONFIGURATION
 
@@ -219,7 +219,7 @@ if __name__ == "__main__":
         patience=params['patience'],
         b_size=params["batch_size"],
         l_rate=params["l_rate"],
-        l_decay=params["lr_decay"],
+        w_decay=params["w_decay"],
         minimum_lr=params["minimum_lr"],
         cf_hidden_dim=params["cf_hidden_dim"],
         dataset_name=params["dataset"]
