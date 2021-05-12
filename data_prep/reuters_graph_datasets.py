@@ -7,7 +7,7 @@ from nltk.corpus import reuters
 import torch
 from torch_geometric.data import Data, Dataset
 
-from data_prep.graph_utils import PMI, tf_idf_mtx
+from data_prep.graph_utils import get_PMI, tf_idf_mtx
 
 
 class Reuters(Dataset):
@@ -36,7 +36,7 @@ class Reuters(Dataset):
         tf_idf, words = tf_idf_mtx(corpus)
 
         print('Compute PMI scores')
-        pmi = PMI(corpus)
+        pmi = get_PMI(corpus)
 
         # Index to node name mapping
         self.iton = list(all_docs + words)
