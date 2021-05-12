@@ -42,7 +42,6 @@ class ClassifierModule(pl.LightningModule):
     def optimizer_step(self, *args, **kwargs):
         super().optimizer_step(*args, **kwargs)
         self.lr_scheduler.step()  # Step per iteration
-        self.log('learning_rate', self.lr_scheduler.get_lr()[0])
 
     def training_step(self, batch, batch_idx):
         """
@@ -56,6 +55,9 @@ class ClassifierModule(pl.LightningModule):
 
         self.log('train_accuracy', self.accuracy(predictions, labels).item(), on_step=False, on_epoch=True)
         self.log('train_loss', loss)
+
+        # logging in optimizer step does not work, therefore here
+        self.log('lr_rate', self.lr_scheduler.get_lr()[0])
 
         return loss
 
