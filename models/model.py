@@ -136,7 +136,7 @@ class GraphNet(torch.nn.Module):
         x = self.conv2(x, edge_index, edge_weight)
         return x
 
-class Graph_model(pl.LightningModule):
+class GraphModel(pl.LightningModule):
     def __init__(self, num_nodes, optimizer_hparams):
         super().__init__()
         device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
