@@ -166,6 +166,10 @@ class GraphModel(pl.LightningModule):
         accuracy = correct / mask.sum()
         return loss, accuracy
     
+    def backward(self, loss, optimizer, optimizer_idx):
+        #override of the backward pass so we can set retain_graph to True
+        loss.backward(retain_graph=True)
+    
     def configure_optimizers(self):
         self.optimizer = AdamW(self.parameters(), **self.hparams.optimizer_hparams)
         return self.optimizer
