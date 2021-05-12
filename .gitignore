@@ -1,7 +1,20 @@
+# Own files
+output/
+get_cuda.job
+get_imports.job
+floor_test.py
+gnn-env.yml
+environment_Lisa*
+*.ckpt
+events.out.*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+*.ckpt
+events.out.*
+*.json
 
 # C extensions
 *.so
