@@ -16,7 +16,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 
-from datasets.graph_utils import PMI, tf_idf_mtx
+from datasets.graph_utils import get_PMI, tf_idf_mtx
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
