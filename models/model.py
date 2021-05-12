@@ -122,7 +122,7 @@ class TransformerModel(nn.Module):
 
         return cls_token_state
 
-class Net(torch.nn.Module):
+class GraphNet(torch.nn.Module):
     def __init__(self, num_nodes):
         super(Net, self).__init__()
         self.conv1 = GCNConv(num_nodes, 200)
@@ -140,7 +140,7 @@ class Graph_model(pl.LightningModule):
     def __init__(self, num_nodes, optimizer_hparams):
         super().__init__()
         device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-        self.model = Net(num_nodes).to(device)
+        self.model = GraphNet(num_nodes).to(device)
         self.test_val_mode = 'test'
         self.save_hyperparameters()
     
