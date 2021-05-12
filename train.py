@@ -60,7 +60,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, weight_decay, warm
 
     model = ClassifierModule(model_params, optimizer_hparams)
 
-    trainer = initialize_trainer(epochs, patience, model_name, l_rate, weight_decay)
+    trainer = initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmup)
 
     # Training
     print('Fitting model ..........\n')
@@ -114,12 +114,12 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
     return test_accuracy, val_accuracy
 
 
-def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay):
+def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmup):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
     os.makedirs(LOG_PATH, exist_ok=True)
 
-    version_str = f'patience={patience}_lr={l_rate}_wdec={weight_decay}'
+    version_str = f'patience={patience}_lr={l_rate}_wdec={weight_decay}_wsteps={warmup}'
     logger = TensorBoardLogger(LOG_PATH, name=model_name, version=version_str)
 
     early_stop_callback = EarlyStopping(
@@ -134,7 +134,9 @@ def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay):
                          checkpoint_callback=model_checkpoint,
                          gpus=1 if torch.cuda.is_available() else 0,
                          max_epochs=epochs,
-                         callbacks=[early_stop_callback, LearningRateMonitor("epoch")],
+                         callbacks=[early_stop_callback,
+                                    # LearningRateMonitor("step")   we are using custom LR monitoring
+                                    ],
                          progress_bar_refresh_rate=1)
 
     # Optional logging argument that we don't need
