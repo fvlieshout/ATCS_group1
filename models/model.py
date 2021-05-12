@@ -124,7 +124,7 @@ class TransformerModel(nn.Module):
 
 class GraphNet(torch.nn.Module):
     def __init__(self, num_nodes):
-        super(Net, self).__init__()
+        super(GraphNet, self).__init__()
         self.conv1 = GCNConv(num_nodes, 200)
         self.conv2 = GCNConv(200, 8)
 
