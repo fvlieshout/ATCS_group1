@@ -158,20 +158,16 @@ class GraphModel(pl.LightningModule):
         elif mode=='test':
             mask = data.test_mask
         loss = F.cross_entropy(out[mask], data.y[mask])
-        # loss = F.nll_loss(out[data.train_mask], data.y[data.train_mask])
         class_predictions = torch.argmax(out, dim=1)
         if mode=='val':
             print('preds:', class_predictions[:20])
             print('real:', data.y[:20])
         correct = (class_predictions[mask] == data.y[mask]).sum().item()
         accuracy = correct / mask.sum()
-        # if math.isnan(loss.item()):
-        #     print()
         return loss, accuracy
     
     def configure_optimizers(self):
-        self.optimizer = torch.optim.Adam(self.parameters(), **self.hparams.optimizer_hparams)
-        # self.optimizer = torch.optim.Adam(self.parameters(), lr=0.01)
+        self.optimizer = AdamW(self.parameters(), **self.hparams.optimizer_hparams)
         return self.optimizer
 
     def training_step(self, batch, batch_idx):
