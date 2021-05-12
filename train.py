@@ -60,12 +60,12 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, minimum_l
         train_dataloader = geom_data.DataLoader(dataset, batch_size=1)
         val_dataloader = geom_data.DataLoader(dataset, batch_size=1)
         test_dataloader = geom_data.DataLoader(dataset, batch_size=1)
-        model = Graph_model(len(dataset.iton), optimizer_hparams)
+        model = GraphModel(len(dataset.iton), optimizer_hparams)
 
     else:
         raise ValueError("Model type '%s' is not supported." % model_name)
 
-    trainer = initialize_trainer(epochs, patience, minimum_lr, model_name, l_rate, l_decay)
+    trainer = initialize_trainer(epochs, patience, minimum_lr, model_name, l_rate, w_decay)
 
     # Training
     print('Fitting model ..........\n')
