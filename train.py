@@ -187,7 +187,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
     parser.add_argument('--lr', dest='l_rate', type=float, default=1e-4)
     parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=1e-5, help="Minimum Learning Rate")
-    parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=1e-3, help="Learning rate (weight) decay")
+    parser.add_argument("--w-decay", dest='w_decay', type=float, default=1e-3, help="Weight decay")
 
     # CONFIGURATION
 
@@ -207,7 +207,7 @@ if __name__ == "__main__":
         patience=params['patience'],
         b_size=params["batch_size"],
         l_rate=params["l_rate"],
-        l_decay=params["lr_decay"],
+        w_decay=params["w_decay"],
         minimum_lr=params["minimum_lr"],
         cf_hidden_dim=params["cf_hidden_dim"],
         dataset_name=params["dataset"]
