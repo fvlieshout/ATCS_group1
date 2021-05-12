@@ -182,12 +182,12 @@ if __name__ == "__main__":
 
     # TRAINING PARAMETERS
 
-    parser.add_argument('--epochs', dest='epochs', type=int, default=20)
-    parser.add_argument('--patience', dest='patience', type=int, default=10)
-    parser.add_argument('--batch-size', dest='batch_size', type=int, default=1)
-    parser.add_argument('--lr', dest='l_rate', type=float, default=0.01)
-    parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=0.001, help="Minimum Learning Rate")
-    parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=0.01, help="Learning rate (weight) decay")
+    parser.add_argument('--epochs', dest='epochs', type=int, default=40)
+    parser.add_argument('--patience', dest='patience', type=int, default=20)
+    parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
+    parser.add_argument('--lr', dest='l_rate', type=float, default=1e-4)
+    parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=1e-5, help="Minimum Learning Rate")
+    parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=1e-3, help="Learning rate (weight) decay")
 
     # CONFIGURATION
 
