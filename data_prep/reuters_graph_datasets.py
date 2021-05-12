@@ -4,14 +4,16 @@ import random
 import nltk
 nltk.download('reuters')
 from nltk.corpus import reuters
+import torchtext.vocab as vocab
 import torch
+from tqdm import tqdm
 from torch_geometric.data import Data, Dataset
-
+from transformers import RobertaModel
 from data_prep.graph_utils import PMI, tf_idf_mtx
 
 
 class Reuters(Dataset):
-    def __init__(self, root, device, r8=False, val_size=0.1, mode='train', transform=None, pre_transform=None):
+    def __init__(self, root, device, r8=False, val_size=0.1, mode='train', tokenizer=None, transform=None, pre_transform=None):
         """
         Creates the train, test, and validation splits for R52 or R8.
         Args:
@@ -25,7 +27,11 @@ class Reuters(Dataset):
         """
         super(Reuters, self).__init__(root, transform, pre_transform)
         self.device = device
+        self.word_embeddings = vocab.GloVe(name='840B', dim=300)
+        self.doc_embeddings = RobertaModel.from_pretrained('roberta-base')
+        self.doc_embeddings.eval()
         self.mode = mode
+        self.tokenizer = tokenizer
 
         print('Prepare Reuters dataset')
         (train_docs, test_docs, val_docs), classes = self.prepare_reuters(r8, val_size)
@@ -61,15 +67,46 @@ class Reuters(Dataset):
 
         # Feature matrix is Identity (according to TextGCN)
         print('Generate feature matrix')
-        node_feats = torch.eye(len(self.iton), device=self.device).float()
+        doc_feats, word_feats = self.generate_features(words, len(all_docs), tokenizer)
+        # node_feats = torch.eye(len(self.iton), device=self.device).float()
         #node_feats = torch.rand(size=(len(self.iton), 100), device=self.device).float()
-        print('Features mtx is {} GBs in size'.format(node_feats.nelement() * node_feats.element_size() * 1e-9))
+        print('Documents features mtx is {} GBs in size'.format(doc_feats.nelement() * doc_feats.element_size() * 1e-9))
+        print('Words features mtx is {} GBs in size'.format(word_feats.nelement() * word_feats.element_size() * 1e-9))
 
         # Create pytorch geometric format data
-        self.data = Data(x=node_feats, edge_index=edge_index, edge_attr=edge_attr, y=ntol)
+        padded_word_feats = torch.cat((word_feats, torch.zeros((word_feats.shape[0],doc_feats.shape[1]-word_feats.shape[1]))),dim=1)
+        self.data = Data(x=torch.cat((doc_feats, padded_word_feats), dim=0), edge_index=edge_index, edge_attr=edge_attr, y=ntol)
+        self.data.num_docs = doc_feats.shape[0]
         self.data.train_mask = train_mask
         self.data.val_mask = val_mask
         self.data.test_mask = test_mask
+
+    def generate_features(self, words, num_docs, tokenizer):
+        num_word_nodes = len(words)
+        features_docs = torch.zeros((num_docs, 768))
+        features_words = torch.zeros((num_word_nodes, 300))
+        unk_embedding = torch.zeros((1, 300))
+
+        for i in tqdm(range(num_docs)):
+            doc_words = reuters.words(self.iton[i])
+            sentence = ' '.join(doc_words)
+            # encodings = tokenizer.encode(sentence, return_tensors='pt')
+            # encodings = tokenizer(doc_words, truncation=True, padding=False)
+            encodings = tokenizer([sentence], truncation=True, padding=False)['input_ids']
+            encodings = torch.tensor(encodings, dtype=torch.long)
+            # doc_tensor = encodings.convert_to_tensors
+            embed_doc = self.doc_embeddings(encodings)[1]
+            features_docs[i] = embed_doc
+        
+        for j, word in tqdm(enumerate(words)):
+            word_idx = self.word_embeddings.stoi.get(word)
+            if word_idx is None:
+                embed_word = unk_embedding
+            else:
+                embed_word = self.word_embeddings.vectors[word_idx]
+            features_words[j] = embed_word
+        return features_docs, features_words
+            
 
     def generate_edges(self, num_docs, tf_idf, pmi):
         """Generates edge list and weights based on tf.idf and PMI.
@@ -180,7 +217,7 @@ class Reuters(Dataset):
         unique_classes = sorted(data.keys())
 
         # For testing with only a few docs:
-        # return (train_docs[:200], test_docs[:20], val_docs[:20]), unique_classes
+        return (train_docs[:10], test_docs[:5], val_docs[:5]), unique_classes
 
         return (train_docs, test_docs, val_docs), unique_classes
     
@@ -204,5 +241,5 @@ class R8(Reuters):
     """
     Wrapper for the R8 dataset.
     """
-    def __init__(self, device, val_size=0.1, root=None):
-        super().__init__(root=root, r8=True, device=device, val_size=val_size)
+    def __init__(self, device, tokenizer=None, val_size=0.1, root=None):
+        super().__init__(root=root, r8=True, tokenizer=tokenizer, device=device, val_size=val_size)

@@ -123,13 +123,18 @@ class TransformerModel(nn.Module):
         return cls_token_state
 
 class Net(torch.nn.Module):
-    def __init__(self, num_nodes):
+    def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = GCNConv(num_nodes, 200)
+        self.linlay = nn.Linear(300, 768)
+        self.conv1 = GCNConv(768, 200)
         self.conv2 = GCNConv(200, 8)
 
-    def forward(self, data):
-        x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
+    def forward(self, data, device):
+        features, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
+        doc_feats = features[:data.num_docs]
+        word_feats = features[data.num_docs:,:300]
+        word_feats = self.linlay(word_feats)
+        x = torch.cat((doc_feats, word_feats))
         x = self.conv1(x, edge_index, edge_weight)
         x = F.relu(x)
         x = F.dropout(x, training=self.training)
@@ -137,6 +142,55 @@ class Net(torch.nn.Module):
         return x
 
 class Graph_model(pl.LightningModule):
+    def __init__(self, num_nodes, optimizer_hparams):
+        super().__init__()
+        self.devc = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+        self.model = Net().to(self.devc)
+        self.test_val_mode = 'test'
+        self.save_hyperparameters()
+    
+    def forward(self, data, mode):
+        out = self.model(data, self.devc)
+        if mode=='train':
+            mask = data.train_mask
+        elif mode=='val':
+            mask = data.val_mask
+        elif mode=='test':
+            mask = data.test_mask
+        loss = F.cross_entropy(out[mask], data.y[mask])
+        # loss = F.nll_loss(out[data.train_mask], data.y[data.train_mask])
+        class_predictions = torch.argmax(out, dim=1)
+        if mode=='val':
+            print('preds:', class_predictions[:20])
+            print('real:', data.y[:20])
+        correct = (class_predictions[mask] == data.y[mask]).sum().item()
+        accuracy = correct / mask.sum()
+        # if math.isnan(loss.item()):
+        #     print()
+        return loss, accuracy
+    
+    def configure_optimizers(self):
+        self.optimizer = torch.optim.Adam(self.parameters(), **self.hparams.optimizer_hparams)
+        # self.optimizer = torch.optim.Adam(self.parameters(), lr=0.01)
+        return self.optimizer
+
+    def training_step(self, batch, batch_idx):
+        loss, acc = self.forward(batch, mode='train')
+        self.log("train_loss", loss, on_step=False, on_epoch=True)
+        self.log("train_accuracy", acc, on_step=False, on_epoch=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        loss, acc = self.forward(batch, mode='val')
+        # self.log("val_loss", loss)
+        self.log("val_accuracy", acc)
+
+    def test_step(self, batch, batch_idx):
+        loss, acc = self.forward(batch, mode=self.test_val_mode)
+        # self.log("test_loss", loss)
+        self.log("test_accuracy", acc)
+
+class Roberta_graph_model(pl.LightningModule):
     def __init__(self, num_nodes, optimizer_hparams):
         super().__init__()
         device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
