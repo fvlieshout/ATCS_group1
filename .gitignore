@@ -7,6 +7,7 @@ gnn-env.yml
 environment_Lisa*
 *.ckpt
 events.out.*
+*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
