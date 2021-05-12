@@ -22,4 +22,5 @@ cd /home/lcur0321/ATCS_group1
 # Activate your environment
 source activate gnn-env
 # Run your code
-srun python -u graph_train.py
+srun python -u graph_train.py --epochs 20 --patience 10 --batch_size 1 --lr 0.01 --lr-decay 0.01 --dataset 'R8Graph' 
+                                --model 'roberta_gnn' --seed 1234 --cf-hidden-dim 512
