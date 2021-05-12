@@ -229,7 +229,7 @@ class Reuters(Dataset):
         return self.data
 
 
-class R52(Reuters):
+class R52Graph(Reuters):
     """
     Wrapper for the R52 dataset.
     """
@@ -237,7 +237,7 @@ class R52(Reuters):
         super().__init__(r8=False, device=device, val_size=val_size)
 
 
-class R8(Reuters):
+class R8Graph(Reuters):
     """
     Wrapper for the R8 dataset.
     """

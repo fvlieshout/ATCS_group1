@@ -12,7 +12,7 @@ from transformers import RobertaTokenizerFast
 
 from data_prep.reuters_text import R8Text, R52Text
 from data_prep.reuters_graph_datasets import R8, R52
-from models.model import ClassifierModule, Graph_model
+from models.model import ClassifierModule, GraphModel
 import torch_geometric.data as geom_data
 
 # disable parallelism for hugging face to avoid deadlocks
@@ -23,11 +23,11 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 LOG_PATH = "./logs/"
 
-SUPPORTED_MODELS = ['roberta']
-SUPPORTED_DATASETS = ['R8Text', 'R52Text']
+SUPPORTED_MODELS = ['roberta', 'gnn']
+SUPPORTED_DATASETS = ['R8Text', 'R52Text', 'R8Graph', 'R52Graph']
 
 
-def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim,
+def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, minimum_lr, cf_hidden_dim,
           dataset_name='R8Text'):
     os.makedirs(LOG_PATH, exist_ok=True)
 
@@ -43,7 +43,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_l
     else:
         tokenizer = None
     dataset = get_dataset(dataset_name, tokenizer)
-    optimizer_hparams = {"lr": l_rate, "weight_decay": l_decay}
+    optimizer_hparams = {"lr": l_rate, "weight_decay": w_decay}
 
     if model_name == 'roberta':
 
@@ -63,17 +63,17 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_l
         train_dataloader = geom_data.DataLoader(dataset, batch_size=1)
         val_dataloader = geom_data.DataLoader(dataset, batch_size=1)
         test_dataloader = geom_data.DataLoader(dataset, batch_size=1)
-        model = Graph_model(len(dataset.iton), optimizer_hparams)
+        model = GraphModel(len(dataset.iton), optimizer_hparams)
     elif model_name == 'roberta_gnn':
         train_dataloader = geom_data.DataLoader(dataset, batch_size=1)
         val_dataloader = geom_data.DataLoader(dataset, batch_size=1)
         test_dataloader = geom_data.DataLoader(dataset, batch_size=1)
-        model = Graph_model(len(dataset.iton), optimizer_hparams)
+        model = GraphModel(len(dataset.iton), optimizer_hparams)
 
     else:
         raise ValueError("Model type '%s' is not supported." % model_name)
 
-    trainer = initialize_trainer(epochs, patience, minimum_lr, model_name, l_rate, l_decay)
+    trainer = initialize_trainer(epochs, patience, minimum_lr, model_name, l_rate, w_decay)
 
     # Training
     print('Fitting model ..........\n')
@@ -192,11 +192,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--epochs', dest='epochs', type=int, default=20)
     parser.add_argument('--patience', dest='patience', type=int, default=10)
-    #batch_size 1 for graph networks
-    # parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=1)
-    #higher learning rate for graph models
-    # parser.add_argument('--lr', dest='l_rate', type=float, default=1e-4)
     parser.add_argument('--lr', dest='l_rate', type=float, default=0.01)
     parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=0.001, help="Minimum Learning Rate")
     parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=0.01, help="Learning rate (weight) decay")

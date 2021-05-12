@@ -122,9 +122,9 @@ class TransformerModel(nn.Module):
 
         return cls_token_state
 
-class Net(torch.nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
+class GraphNet(torch.nn.Module):
+    def __init__(self, num_nodes):
+        super(GraphNet, self).__init__()
         self.linlay = nn.Linear(300, 768)
         self.conv1 = GCNConv(768, 200)
         self.conv2 = GCNConv(200, 8)
@@ -141,11 +141,11 @@ class Net(torch.nn.Module):
         x = self.conv2(x, edge_index, edge_weight)
         return x
 
-class Graph_model(pl.LightningModule):
+class GraphModel(pl.LightningModule):
     def __init__(self, num_nodes, optimizer_hparams):
         super().__init__()
         self.devc = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-        self.model = Net().to(self.devc)
+        self.model = GraphNet().to(self.devc)
         self.test_val_mode = 'test'
         self.save_hyperparameters()
     
@@ -194,7 +194,7 @@ class Roberta_graph_model(pl.LightningModule):
     def __init__(self, num_nodes, optimizer_hparams):
         super().__init__()
         device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-        self.model = Net(num_nodes).to(device)
+        self.model = GraphNet(num_nodes).to(device)
         self.test_val_mode = 'test'
         self.save_hyperparameters()
     
