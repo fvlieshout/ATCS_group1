@@ -1,5 +1,3 @@
-import math
-
 import numpy as np
 import pytorch_lightning as pl
 from torch import nn
