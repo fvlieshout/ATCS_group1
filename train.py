@@ -38,15 +38,18 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_l
     pl.seed_everything(seed)
 
     # the data preprocessing per model
-
-    dataset = get_dataset(dataset_name)
+    if model_name == 'roberta' or model_name == 'roberta_gnn':
+        tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
+    else:
+        tokenizer = None
+    dataset = get_dataset(dataset_name, tokenizer)
     optimizer_hparams = {"lr": l_rate, "weight_decay": l_decay}
 
     if model_name == 'roberta':
 
         # Prepare the data
 
-        tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
+        # tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
 
         train_dataset, test_dataset, val_dataset = dataset.splits(tokenizer, val_size=0.1)
 
@@ -57,6 +60,11 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_l
         model = ClassifierModule(model_params, optimizer_hparams)
     
     elif model_name == 'pure_gnn':
+        train_dataloader = geom_data.DataLoader(dataset, batch_size=1)
+        val_dataloader = geom_data.DataLoader(dataset, batch_size=1)
+        test_dataloader = geom_data.DataLoader(dataset, batch_size=1)
+        model = Graph_model(len(dataset.iton), optimizer_hparams)
+    elif model_name == 'roberta_gnn':
         train_dataloader = geom_data.DataLoader(dataset, batch_size=1)
         val_dataloader = geom_data.DataLoader(dataset, batch_size=1)
         test_dataloader = geom_data.DataLoader(dataset, batch_size=1)
@@ -150,14 +158,14 @@ def initialize_trainer(epochs, patience, minimum_lr, model_name, l_rate, l_decay
     return trainer
 
 
-def get_dataset(dataset_name):
+def get_dataset(dataset_name, tokenizer=None):
     device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
     if dataset_name == "R8Text":
         return R8Text
     elif dataset_name == "R52Text":
         return R52Text
     elif dataset_name =='R8Graph':
-        return R8(device)
+        return R8(device, tokenizer)
     elif dataset_name =='R52Graph':
         return R52(device)
     else:
@@ -195,9 +203,13 @@ if __name__ == "__main__":
 
     # CONFIGURATION
 
+    # parser.add_argument('--dataset', dest='dataset', default='R8Text', choices=SUPPORTED_DATASETS,
+    #                     help='Select the dataset you want to use.')
     parser.add_argument('--dataset', dest='dataset', default='R8Graph', choices=SUPPORTED_DATASETS,
                         help='Select the dataset you want to use.')
-    parser.add_argument('--model', dest='model', default='pure_gnn', choices=SUPPORTED_MODELS,
+    # parser.add_argument('--model', dest='model', default='roberta', choices=SUPPORTED_MODELS,
+    #                     help='Select the model you want to use.')
+    parser.add_argument('--model', dest='model', default='roberta_gnn', choices=SUPPORTED_MODELS,
                         help='Select the model you want to use.')
     parser.add_argument('--seed', dest='seed', type=int, default=1234)
     parser.add_argument('--cf-hidden-dim', dest='cf_hidden_dim', type=int, default=512)
