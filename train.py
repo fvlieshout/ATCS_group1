@@ -11,7 +11,9 @@ from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
 
 from data_prep.reuters_text import R8Text, R52Text
-from data_prep.reuters_graph_datasets import R8, R52
+from data_prep.reuters_graph import R8Graph, R52Graph
+from data_prep.agnews_text import AGNewsText
+
 from models.model import ClassifierModule, GraphModel
 import torch_geometric.data as geom_data
 
@@ -24,7 +26,7 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 LOG_PATH = "./logs/"
 
 SUPPORTED_MODELS = ['roberta', 'gnn']
-SUPPORTED_DATASETS = ['R8Text', 'R52Text', 'R8Graph', 'R52Graph']
+SUPPORTED_DATASETS = ['R8Text', 'R52Text', 'R8Graph', 'R52Graph', 'AGNewsText']
 
 
 def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, minimum_lr, cf_hidden_dim,
@@ -156,10 +158,12 @@ def get_dataset(dataset_name):
         return R8Text
     elif dataset_name == "R52Text":
         return R52Text
+    elif dataset_name == "AGNewsText":
+        return AGNewsText
     elif dataset_name =='R8Graph':
-        return R8(device)
+        return R8Graph(device)
     elif dataset_name =='R52Graph':
-        return R52(device)
+        return R52Graph(device)
     else:
         raise ValueError("Dataset '%s' is not supported." % dataset_name)
 
