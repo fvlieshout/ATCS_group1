@@ -12,7 +12,7 @@ from transformers import RobertaTokenizerFast
 
 from data_prep.reuters_text import R8Text, R52Text
 from data_prep.reuters_graph_datasets import R8, R52
-from models.model import ClassifierModule, Graph_model
+from models.model import ClassifierModule, GraphModel
 import torch_geometric.data as geom_data
 
 # disable parallelism for hugging face to avoid deadlocks
