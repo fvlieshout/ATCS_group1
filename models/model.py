@@ -36,13 +36,10 @@ class ClassifierModule(pl.LightningModule):
         optimizer = AdamW(self.parameters(), lr=self.hparams.optimizer_hparams['lr'],
                           weight_decay=self.hparams.optimizer_hparams['weight_decay'])
 
-        # Disabling it for now as it prevented the model somehow to actually learn
-        step_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1,
-                                                   gamma=self.hparams.optimizer_hparams['lr_decay'])
+        self.lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=self.hparams.optimizer_hparams['warmup'],
+                                                  max_iters=self.hparams.optimizer_hparams['max_iters'])
 
-        self.lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=100, max_iters=2000)
-
-        return [optimizer], [step_scheduler]
+        return [optimizer], []
 
     def optimizer_step(self, *args, **kwargs):
         super().optimizer_step(*args, **kwargs)

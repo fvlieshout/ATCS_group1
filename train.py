@@ -26,12 +26,12 @@ SUPPORTED_MODELS = ['roberta']
 SUPPORTED_DATASETS = ['R8Text', 'R52Text']
 
 
-def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, weight_decay, cf_hidden_dim,
+def train(model_name, seed, epochs, patience, b_size, l_rate, weight_decay, warmup, max_iters, cf_hidden_dim,
           dataset_name='R8Text'):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     print(f'Configuration:\n model_name: {model_name} \n max epochs: {epochs}\n patience: {patience}'
-          f'\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n l_decay: {l_decay}\n '
+          f'\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n warmup: {warmup}\n '
           f'weight_decay: {weight_decay}\n cf_hidden_dim: {cf_hidden_dim}\n dataset_name: {dataset_name}\n')
 
     pl.seed_everything(seed)
@@ -56,11 +56,11 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, weight_de
         raise ValueError("Model type '%s' is not supported." % model_name)
 
     model_params = {'model': model_name, "num_classes": train_dataset.num_classes, "cf_hid_dim": cf_hidden_dim}
-    optimizer_hparams = {"lr": l_rate, "weight_decay": weight_decay, "lr_decay": l_decay}
+    optimizer_hparams = {"lr": l_rate, "weight_decay": weight_decay, "warmup": warmup, "max_iters": max_iters}
 
     model = ClassifierModule(model_params, optimizer_hparams)
 
-    trainer = initialize_trainer(epochs, patience, model_name, l_rate, l_decay, weight_decay)
+    trainer = initialize_trainer(epochs, patience, model_name, l_rate, weight_decay)
 
     # Training
     print('Fitting model ..........\n')
@@ -114,12 +114,12 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
     return test_accuracy, val_accuracy
 
 
-def initialize_trainer(epochs, patience, model_name, l_rate, l_decay, weight_decay):
+def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
     os.makedirs(LOG_PATH, exist_ok=True)
 
-    version_str = f'patience={patience}_lr={l_rate}_ldec={l_decay}_wdec={weight_decay}'
+    version_str = f'patience={patience}_lr={l_rate}_wdec={weight_decay}'
     logger = TensorBoardLogger(LOG_PATH, name=model_name, version=version_str)
 
     early_stop_callback = EarlyStopping(
@@ -164,7 +164,10 @@ if __name__ == "__main__":
     parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=1e-5, help="Minimum Learning Rate")
     parser.add_argument("--weight-decay", dest='weight_decay', type=float, default=1e-3,
                         help="Weight decay for L2 regularization of optimizer AdamW")
-    parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=0.99, help="Learning rate decay")
+    parser.add_argument("--warmup", dest='warmup', type=int, default=100,
+                        help="Number of steps for which we do learning rate warmup.")
+    parser.add_argument("--max-iters", dest='max_iters', type=int, default=2000,
+                        help="Max iterations for learning rate warmup.")
 
     # CONFIGURATION
 
@@ -184,8 +187,9 @@ if __name__ == "__main__":
         patience=params['patience'],
         b_size=params["batch_size"],
         l_rate=params["l_rate"],
-        l_decay=params["lr_decay"],
         weight_decay=params["weight_decay"],
+        warmup=params["warmup"],
+        max_iters=params["max_iters"],
         cf_hidden_dim=params["cf_hidden_dim"],
         dataset_name=params["dataset"]
     )
