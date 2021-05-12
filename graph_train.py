@@ -1,3 +1,5 @@
+# BE AWARE, THIS FILE IS A DUPLICATE AND WILL BE DELETED IN THE FUTURE
+
 import os
 import argparse
 import torch
