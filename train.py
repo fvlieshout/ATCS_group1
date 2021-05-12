@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
 
 from data_prep.reuters_text import R8Text, R52Text
-from data_prep.reuters_graph_datasets import R8, R52
+from data_prep.reuters_graph_datasets import R8Graph, R52Graph
 from models.model import ClassifierModule, GraphModel
 import torch_geometric.data as geom_data
 
@@ -165,9 +165,9 @@ def get_dataset(dataset_name, tokenizer=None):
     elif dataset_name == "R52Text":
         return R52Text
     elif dataset_name =='R8Graph':
-        return R8(device, tokenizer)
+        return R8Graph(device, tokenizer)
     elif dataset_name =='R52Graph':
-        return R52(device)
+        return R52Graph(device)
     else:
         raise ValueError("Dataset '%s' is not supported." % dataset_name)
 
