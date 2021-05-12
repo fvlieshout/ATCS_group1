@@ -1,16 +1,17 @@
-import nltk
+from collections import defaultdict
+import random
 
+import nltk
 nltk.download('reuters')
 from nltk.corpus import reuters
 import torch
-from torch_geometric.data import Data
+from torch_geometric.data import Data, Dataset
 
-from data_prep.graph_utils import tf_idf_mtx, get_PMI
-from data_prep.dataset import Reuters
+from data_prep.graph_utils import get_PMI, tf_idf_mtx
 
 
-class ReutersGraph(Reuters):
-    def __init__(self, device, r8=False, val_size=0.1):
+class Reuters(Dataset):
+    def __init__(self, root, device, r8=False, val_size=0.1, mode='train', transform=None, pre_transform=None):
         """
         Creates the train, test, and validation splits for R52 or R8.
         Args:
@@ -22,7 +23,9 @@ class ReutersGraph(Reuters):
             test_split (Dataset): Test split.
             val_split (Dataset): Validation split.
         """
+        super(Reuters, self).__init__(root, transform, pre_transform)
         self.device = device
+        self.mode = mode
 
         print('Prepare Reuters dataset')
         (train_docs, test_docs, val_docs), classes = self.prepare_reuters(r8, val_size)
@@ -33,7 +36,7 @@ class ReutersGraph(Reuters):
         tf_idf, words = tf_idf_mtx(corpus)
 
         print('Compute PMI scores')
-        pmi_score = get_PMI(corpus)
+        pmi = get_PMI(corpus)
 
         # Index to node name mapping
         self.iton = list(all_docs + words)
@@ -42,7 +45,7 @@ class ReutersGraph(Reuters):
 
         # Edge index and values for dataset
         print('Generate edges')
-        edge_index, edge_attr = self.generate_edges(len(all_docs), tf_idf, pmi_score)
+        edge_index, edge_attr = self.generate_edges(len(all_docs), tf_idf, pmi)
 
         # Index to label mapping
         self.itol = classes
@@ -59,7 +62,7 @@ class ReutersGraph(Reuters):
         # Feature matrix is Identity (according to TextGCN)
         print('Generate feature matrix')
         node_feats = torch.eye(len(self.iton), device=self.device).float()
-        # node_feats = torch.rand(size=(len(self.iton), 100), device=self.device).float()
+        #node_feats = torch.rand(size=(len(self.iton), 100), device=self.device).float()
         print('Features mtx is {} GBs in size'.format(node_feats.nelement() * node_feats.element_size() * 1e-9))
 
         # Create pytorch geometric format data
@@ -68,14 +71,13 @@ class ReutersGraph(Reuters):
         self.data.val_mask = val_mask
         self.data.test_mask = test_mask
 
-    def generate_edges(self, num_docs, tf_idf, pmi_scores):
-        """
-        Generates edge list and weights based on tf.idf and PMI.
+    def generate_edges(self, num_docs, tf_idf, pmi):
+        """Generates edge list and weights based on tf.idf and PMI.
 
         Args:
             num_docs (int): Number of all documents in the dataset
             tf_idf (SparseMatrix): sklearn Sparse matrix object containing tf.idf values
-            pmi_scores (dict): Dictionary of word pairs and corresponding PMI scores
+            pmi (dict): Dictonary of word pairs and corresponding PMI scores
 
         Returns:
             edge_index (Tensor): List of edges.
@@ -94,7 +96,7 @@ class ReutersGraph(Reuters):
                 edge_attr.append(tf_idf[d_ind, w_ind])
 
         # Word-word edges
-        for (word_i, word_j), score in pmi_scores.items():
+        for (word_i, word_j), score in pmi.items():
             w_i_ind = self.ntoi[word_i]
             w_j_ind = self.ntoi[word_j]
             edge_index.append([w_i_ind, w_j_ind])
@@ -107,8 +109,7 @@ class ReutersGraph(Reuters):
         return edge_index, edge_attr
 
     def generate_masks(self, train_num, val_num, test_num):
-        """
-        Generates masking for the different splits in the dataset.
+        """Generates masking for the different splits in the dataset.
 
         Args:
             train_num (int): Number of training documents.
@@ -134,29 +135,74 @@ class ReutersGraph(Reuters):
 
     @staticmethod
     def prepare_reuters(r8=False, val_size=0.1):
-        (train_docs, test_docs, val_docs), unique_classes = Reuters.prepare_reuters(r8=r8, val_size=val_size)
+        """
+        Filters out all documents which have more or less than 1 class.
+        Then filters out all classes which have no remaining documents.
+        Args:
+            r8 (bool, optional): R8 is constructed by taking only the top 10 (original) classes. Defaults to False.
+            val_size (float, optional): Proportion of training documents to include in the validation set.
+        Returns:
+            doc_splits (tuple): Tuple containing 3 List of training, test, and validation documents.
+            unique_classes (List): List of Strings containing the class names sorted in alphabetical order.
+        """
+        # Filter out docs which don't have exactly 1 class
+        data = defaultdict(lambda: {'train': [], 'test': []})
+
+        for doc in reuters.fileids():
+            categories = reuters.categories(doc)
+            if len(categories) == 1:
+                if doc.startswith('training'):
+                    data[categories[0]]['train'].append(doc)
+                if doc.startswith('test'):
+                    data[categories[0]]['test'].append(doc)
+
+        # Filter out classes which have no remaining docs
+        for cat in reuters.categories():
+            if len(data[cat]['train']) < 1 or len(data[cat]['test']) < 1:
+                data.pop(cat, None)
+
+        if r8:
+            # Choose top 10 classes and then select the ones which still remain after filtering
+            popular = sorted(reuters.categories(), key=lambda clz: len(reuters.fileids(clz)), reverse=True)[:10]
+            data = dict([(cls, splits) for (cls, splits) in data.items() if cls in popular])
+
+        # Create splits
+        train_docs = [doc for cls, splits in data.items() for doc in splits['train']]
+        test_docs = [doc for cls, splits in data.items() for doc in splits['test']]
+
+        # Select the validation documents out of the training documents
+        val_size = int(len(train_docs) * val_size)
+        random.shuffle(train_docs)
+        val_docs = train_docs[:val_size]
+        train_docs = train_docs[val_size:]
+
+        # sort the unique classes to ensure constant order
+        unique_classes = sorted(data.keys())
 
         # For testing with only a few docs:
-        return (train_docs[:1000], test_docs[:100], val_docs[:100]), unique_classes
+        # return (train_docs[:200], test_docs[:20], val_docs[:20]), unique_classes
 
-    @property
-    def num_classes(self):
-        return len(self.itol)
+        return (train_docs, test_docs, val_docs), unique_classes
+    
+    def len(self):
+        length = len(self.data)
+        return 1
+    
+    def get(self, idx):
+        return self.data
 
 
-class R52Graph(ReutersGraph):
+class R52Graph(Reuters):
     """
     Wrapper for the R52 dataset.
     """
-
     def __init__(self, device, val_size=0.1):
         super().__init__(r8=False, device=device, val_size=val_size)
 
 
-class R8Graph(ReutersGraph):
+class R8Graph(Reuters):
     """
     Wrapper for the R8 dataset.
     """
-
-    def __init__(self, device, val_size=0.1):
-        super().__init__(r8=True, device=device, val_size=val_size)
+    def __init__(self, device, val_size=0.1, root=None):
+        super().__init__(root=root, r8=True, device=device, val_size=val_size)
