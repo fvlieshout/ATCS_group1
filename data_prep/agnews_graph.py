@@ -15,10 +15,6 @@ class AGNewsGraph(GraphDataset):
             device (Device): Device to use to store the dataset.
             val_size (float, optional): Proportion of training documents to include in the validation set.
             train_doc (int, optional): Number of documents to use from the training set. If None, include all.
-        Returns:
-            train_split (Dataset): Training split.
-            test_split (Dataset): Test split.
-            val_split (Dataset): Validation split.
         """
         self.device = device
         self.train_doc = train_doc
@@ -47,7 +43,7 @@ class AGNewsGraph(GraphDataset):
 
         # Edge index and values for dataset
         print('Generate edges')
-        edge_index, edge_attr = self.generate_edges(len(all_docs), tf_idf, pmi_score)
+        edge_index, edge_attr = self.generate_edges(tf_idf, words, pmi_score)
 
         # Index to label mapping
         self.itol = classes
@@ -90,7 +86,7 @@ class AGNewsGraph(GraphDataset):
         # create the training and validation splits
         train_val_splits = dataset["train"].train_test_split(test_size=val_size)
 
-        # extract the text for each news article        
+        # extract the text for each news article
         train_texts, train_labels = zip(*[(data["text"], data["label"]) for data in train_val_splits["train"]])
         val_texts, val_labels = zip(*[(data["text"], data["label"]) for data in train_val_splits["test"]])
         test_texts, test_labels = zip(*[(data["text"], data["label"]) for data in dataset["test"]])
@@ -105,9 +101,9 @@ class AGNewsGraph(GraphDataset):
         else:
             docs = (list(train_texts), list(test_texts), list(val_texts))
             labels = (list(train_labels), list(test_labels), list(val_labels))
-        
+
         return docs, labels, unique_classes
-    
+
     @property
     def num_classes(self):
         return len(self.itol)

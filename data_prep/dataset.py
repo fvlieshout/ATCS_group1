@@ -40,15 +40,14 @@ class GraphDataset(Dataset):
     Parent class for graph datasets.
     Provide methods to generate the edges and the training, validation, and test masks.
     """
-    def generate_edges(self, num_docs, tf_idf, pmi_scores):
+    def generate_edges(self, tf_idf, tf_idf_words, pmi_scores):
         """
         Generates edge list and weights based on tf.idf and PMI.
 
         Args:
-            num_docs (int): Number of all documents in the dataset
-            tf_idf (SparseMatrix): sklearn Sparse matrix object containing tf.idf values
-            pmi_scores (dict): Dictionary of word pairs and corresponding PMI scores
-
+            tf_idf (SparseMatrix): sklearn Sparse matrix object containing tf.idf values.
+            tf_idf_words (list): List of words according to the tf.idf matrix.
+            pmi_scores (dict): Dictionary of word pairs and corresponding PMI scores.
         Returns:
             edge_index (Tensor): List of edges.
             edge_attr (Tensor): List of edge weights.
@@ -58,12 +57,16 @@ class GraphDataset(Dataset):
 
         # Document-word edges
         for d_ind, doc in enumerate(tf_idf):
-            word_inds = doc.indices
-            for w_ind in word_inds:
-                edge_index.append([d_ind, num_docs + w_ind])
-                edge_index.append([num_docs + w_ind, d_ind])
-                edge_attr.append(tf_idf[d_ind, w_ind])
-                edge_attr.append(tf_idf[d_ind, w_ind])
+            tf_idf_inds = doc.indices
+            for tf_idf_ind in tf_idf_inds:
+                # Convert index from tf.idf to index in self.ntoi
+                word = tf_idf_words[tf_idf_ind]
+                w_ind = self.ntoi[word]
+
+                edge_index.append([d_ind, w_ind])
+                edge_index.append([w_ind, d_ind])
+                edge_attr.append(tf_idf[d_ind, tf_idf_ind])
+                edge_attr.append(tf_idf[d_ind, tf_idf_ind])
 
         # Word-word edges
         for (word_i, word_j), score in pmi_scores.items():
@@ -88,9 +91,9 @@ class GraphDataset(Dataset):
             test_num (int): Number of test documents.
 
         Returns:
-            train_mask (List): Training mask as boolean list.
-            val_mask (List): Validation mask as boolean list.
-            test_mask (List): Test mask as boolean list.
+            train_mask (Tensor): Training mask as boolean list.
+            val_mask (Tensor): Validation mask as boolean list.
+            test_mask (Tensor): Test mask as boolean list.
         """
         val_mask = torch.zeros(len(self.iton), device=self.device)
         val_mask[:val_num] = 1

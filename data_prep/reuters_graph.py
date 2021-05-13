@@ -45,7 +45,7 @@ class ReutersGraph(GraphDataset, Reuters):
 
         # Edge index and values for dataset
         print('Generate edges')
-        edge_index, edge_attr = self.generate_edges(len(all_docs), tf_idf, pmi_score)
+        edge_index, edge_attr = self.generate_edges(tf_idf, words, pmi_score)
 
         # Index to label mapping
         self.itol = classes
