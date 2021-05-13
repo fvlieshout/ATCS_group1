@@ -1,6 +1,5 @@
 import torch
 from data_prep.dataset import GraphDataset
-from data_prep.graph_utils import tf_idf_mtx
 from datasets import load_dataset
 from nltk.tokenize.regexp import WordPunctTokenizer
 from torch_geometric.data import Data

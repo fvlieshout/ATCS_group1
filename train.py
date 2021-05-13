@@ -9,6 +9,7 @@ import torch_geometric.data as geom_data
 from data_prep.agnews_text import AGNewsText
 from data_prep.reuters_graph import R8Graph, R52Graph
 from data_prep.reuters_text import R8Text, R52Text
+from data_prep.imdb_text import IMDbText
 from models.model import ClassifierModule
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
