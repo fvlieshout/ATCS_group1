@@ -1,8 +1,11 @@
 import numpy as np
 import pytorch_lightning as pl
+import torch
+import torch.nn.functional as F
 from torch import nn
 from torch import optim
 from torch.optim import AdamW
+from torch_geometric.nn import GCNConv
 from transformers import RobertaModel
 
 
@@ -23,12 +26,18 @@ class ClassifierModule(pl.LightningModule):
 
         self.loss_module = nn.CrossEntropyLoss()
 
-        self.model = DocumentClassifier(model_hparams)
+        model = model_hparams['model']
+        if model == 'roberta':
+            self.model = TransformerClassifier(model_hparams)
+        elif model == 'pure-gnn':
+            self.model = GraphClassifier(model_hparams)
+        else:
+            raise ValueError("Model type '%s' is not supported." % model)
 
         self.lr_scheduler = None
 
-    def forward(self, batch):
-        return self.model(batch['input_ids'], batch['attention_mask']), batch['labels']
+    def forward(self, batch, mode):
+        return self.model(batch, mode)
 
     def configure_optimizers(self):
         optimizer = AdamW(self.parameters(), lr=self.hparams.optimizer_hparams['lr'],
@@ -50,8 +59,10 @@ class ClassifierModule(pl.LightningModule):
             batch_idx     - Index of the batch in the dataset (not needed here).
         """
         # "batch" is the output of the training data loader
-        predictions, labels = self.forward(batch)
+        predictions, labels = self.forward(batch, mode='train')
         loss = self.loss_module(predictions, labels)
+
+        # print('loss ' + str(loss.item()))
 
         self.log('train_accuracy', self.accuracy(predictions, labels).item(), on_step=False, on_epoch=True)
         self.log('train_loss', loss)
@@ -63,11 +74,11 @@ class ClassifierModule(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         # By default logs it per epoch (weighted average over batches)
-        self.log('val_accuracy', self.accuracy(*self.forward(batch)))
+        self.log('val_accuracy', self.accuracy(*self.forward(batch, mode='val')))
 
     def test_step(self, batch, batch_idx):
         # By default logs it per epoch (weighted average over batches)
-        self.log('test_accuracy', self.accuracy(*self.forward(batch)))
+        self.log('test_accuracy', self.accuracy(*self.forward(batch, mode='test')))
 
     @staticmethod
     def accuracy(predictions, labels):
@@ -93,7 +104,7 @@ class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
         return lr_factor
 
 
-class DocumentClassifier(nn.Module):
+class TransformerClassifier(nn.Module):
 
     def __init__(self, model_hparams):
         super().__init__()
@@ -102,7 +113,7 @@ class DocumentClassifier(nn.Module):
         if model == 'roberta':
             self.encoder = TransformerModel()
         else:
-            raise ValueError("Model type '%s' is not supported." % model)
+            raise ValueError("Transformer type '%s' is not supported." % model)
 
         cf_hidden_dim = model_hparams['cf_hid_dim']
 
@@ -113,10 +124,13 @@ class DocumentClassifier(nn.Module):
             nn.Linear(cf_hidden_dim, model_hparams['num_classes'])
         )
 
-    def forward(self, inputs, attention_mask=None):
+    # noinspection PyUnusedLocal; needs to be there to catch additional parameter mode
+    def forward(self, batch, *args):
+        inputs, attention_mask = batch['input_ids'], batch['attention_mask']
+
         out = self.encoder(inputs, attention_mask)
         out = self.classifier(out)
-        return out
+        return out, batch['labels']
 
 
 class TransformerModel(nn.Module):
@@ -145,3 +159,43 @@ class TransformerModel(nn.Module):
         cls_token_state = hidden_states[1]
 
         return cls_token_state
+
+
+class GraphNet(torch.nn.Module):
+    def __init__(self, num_nodes):
+        super(GraphNet, self).__init__()
+        self.conv1 = GCNConv(num_nodes, 200)
+        self.conv2 = GCNConv(200, 8)
+
+    def forward(self, data):
+        x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
+        x = self.conv1(x, edge_index, edge_weight)
+        x = F.relu(x)
+        x = F.dropout(x, training=self.training)
+        x = self.conv2(x, edge_index, edge_weight)
+        return x
+
+
+class GraphClassifier(nn.Module):
+    def __init__(self, model_hparams):
+        super().__init__()
+
+        self.model = GraphNet(model_hparams['num_nodes'])
+        self.test_val_mode = 'test'
+
+    def forward(self, data, mode):
+        out = self.model(data)
+
+        if mode == 'train':
+            mask = data.train_mask
+        elif mode == 'val':
+            mask = data.val_mask
+        elif mode == 'test':
+            mask = data.test_mask
+        else:
+            raise ValueError("Mode '%s' is not supported in forward of graph classifier." % mode)
+
+        predictions = out[mask]
+        targets = data.y[mask]
+
+        return predictions, targets
