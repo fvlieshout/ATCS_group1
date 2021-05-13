@@ -24,7 +24,7 @@ class AGNewsGraph(GraphDataset):
         train_docs, test_docs, val_docs = docs
         train_labels, test_labels, val_labels = labels
 
-        all_docs = train_docs + test_docs + val_docs
+        all_docs = val_docs + train_docs + test_docs
         all_labels = train_labels + test_labels + val_labels
 
         tokenizer = WordPunctTokenizer() # TODO: look into a better one?

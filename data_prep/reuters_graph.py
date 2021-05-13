@@ -18,17 +18,13 @@ class ReutersGraph(GraphDataset, Reuters):
             r8 (bool, optional): If true, it initializes R8 instead of R52. Defaults to False.
             val_size (float, optional): Proportion of training documents to include in the validation set.
             train_doc (int, optional): Number of documents to use from the training set. If None, include all.
-        Returns:
-            train_split (Dataset): Training split.
-            test_split (Dataset): Test split.
-            val_split (Dataset): Validation split.
         """
         self.device = device
         self.train_doc = train_doc
 
         print('Prepare Reuters dataset')
         (train_docs, test_docs, val_docs), classes = self.prepare_reuters(r8, val_size, train_doc)
-        all_docs = train_docs + test_docs + val_docs
+        all_docs = val_docs + train_docs + test_docs
         corpus = [[word.lower() for word in reuters.words(doc)] for doc in all_docs]
 
         print('Compute tf.idf')
