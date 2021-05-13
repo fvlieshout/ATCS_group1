@@ -15,14 +15,6 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
 
-from data_prep.reuters_text import R8Text, R52Text
-from data_prep.agnews_text import AGNewsText
-from data_prep.imdb_text import IMDbText
-from data_prep.reuters_graph import R8Graph, R52Graph
-
-from models.model import ClassifierModule, GraphModel
-import torch_geometric.data as geom_data
-
 # disable parallelism for hugging face to avoid deadlocks
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 

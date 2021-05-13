@@ -6,11 +6,8 @@ import torch
 import torch.utils.data as data
 from data_prep.graph_utils import tf_idf_mtx, get_PMI
 from nltk.corpus import reuters
-<<<<<<< HEAD
 from datasets import load_dataset
-=======
 from torch_geometric.data import Data
->>>>>>> main
 
 
 class Dataset(data.Dataset, metaclass=abc.ABCMeta):
@@ -239,7 +236,8 @@ class Reuters(Dataset):
 
 class HuggingFaceDataset(TextDataset):
     """
-    Parent class HuggingFace text datasets.
+    Parent class HuggingFace text datasets. To use this class, 
+    the underlying HuggingFace dataset must have a text and a label attribute.
     """
     def __init__(self, texts, labels, classes, tokenizer):
         self.texts = texts
