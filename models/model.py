@@ -29,7 +29,7 @@ class ClassifierModule(pl.LightningModule):
         model = model_hparams['model']
         if model == 'roberta':
             self.model = TransformerClassifier(model_hparams)
-        if model == 'gnn':
+        if model == 'pure-gnn':
             self.model = GraphClassifier(model_hparams)
         else:
             raise ValueError("Model type '%s' is not supported." % model)
@@ -61,7 +61,7 @@ class ClassifierModule(pl.LightningModule):
         # "batch" is the output of the training data loader
         predictions, labels = self.forward(batch, mode='train')
         loss = self.loss_module(predictions, labels)
-
+        print('loss ' + loss.item())
         self.log('train_accuracy', self.accuracy(predictions, labels).item(), on_step=False, on_epoch=True)
         self.log('train_loss', loss)
 
@@ -72,11 +72,15 @@ class ClassifierModule(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         # By default logs it per epoch (weighted average over batches)
-        self.log('val_accuracy', self.accuracy(*self.forward(batch, mode='val')))
+        accuracy = self.accuracy(*self.forward(batch, mode='val'))
+        print('val acc: ' + accuracy)
+        self.log('val_accuracy', accuracy)
 
     def test_step(self, batch, batch_idx):
         # By default logs it per epoch (weighted average over batches)
-        self.log('test_accuracy', self.accuracy(*self.forward(batch, mode='test')))
+        accuracy = self.accuracy(*self.forward(batch, mode='test'))
+        print('test acc: ' + accuracy)
+        self.log('test_accuracy', accuracy)
 
     @staticmethod
     def accuracy(predictions, labels):
@@ -84,7 +88,7 @@ class ClassifierModule(pl.LightningModule):
         if self.hparams.model_hparams['model'] == 'roberta':
             # noinspection PyUnresolvedReferences
             return (labels == predictions.argmax(dim=-1)).float().mean()
-        elif self.hparams.model_hparams['model'] == 'gnn':
+        elif self.hparams.model_hparams['model'] == 'pure-gnn':
             class_predictions = torch.argmax(out, dim=1)
 
             if mode == 'val':
@@ -188,12 +192,12 @@ class GraphNet(torch.nn.Module):
 
 
 class GraphClassifier(nn.Module):
-    def __init__(self, num_nodes):
+    def __init__(self, model_hparams):
         super().__init__()
 
-        device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+        # device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
-        self.model = GraphNet(num_nodes).to(device)
+        self.model = GraphNet(model_hparams['num_nodes'])#.to(device)
         self.test_val_mode = 'test'
 
     def forward(self, data, mode):

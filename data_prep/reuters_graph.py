@@ -9,7 +9,6 @@ from data_prep.graph_utils import tf_idf_mtx, get_PMI
 from data_prep.dataset import GraphDataset, Reuters
 
 
-
 class ReutersGraph(GraphDataset, Reuters):
     def __init__(self, device, r8=False, val_size=0.1, train_doc=None):
         """
@@ -80,7 +79,7 @@ class ReutersGraph(GraphDataset, Reuters):
             test_val_num_docs = int(val_size * train_doc)
             return (train_docs[:train_doc], test_docs[:test_val_num_docs], val_docs[:test_val_num_docs]), unique_classes
         else:
-            return train_docs, test_docs, val_docs, unique_classes
+            return (train_docs, test_docs, val_docs), unique_classes
 
     @property
     def num_classes(self):

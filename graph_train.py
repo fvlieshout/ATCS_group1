@@ -10,7 +10,7 @@ import nltk
 import torch_geometric.data as geom_data
 # nltk.download('reuters')
 # from nltk.corpus import reuters
-from datasets.reuters_graph_datasets import R8, R52
+from data_prep.reuters_graph import R8Graph, R52Graph
 from torch_geometric.data import Data
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
@@ -18,7 +18,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 
-from datasets.graph_utils import get_PMI, tf_idf_mtx
+from data_prep.graph_utils import get_PMI, tf_idf_mtx
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -101,9 +101,9 @@ def train_model(args):
     os.makedirs(args.log_dir, exist_ok=True)
 
     if args.dataset=='r8':
-        dataset = R8(device)
+        dataset = R8Graph(device)
     elif args.dataset=='r52':
-        dataset = R52(device)
+        dataset = R52Graph(device)
 
     # data = data_object.data.to(device)
     graph_data_loader = geom_data.DataLoader(dataset, batch_size=1)

@@ -9,10 +9,7 @@ import torch_geometric.data as geom_data
 from data_prep.agnews_text import AGNewsText
 from data_prep.reuters_graph import R8Graph, R52Graph
 from data_prep.reuters_text import R8Text, R52Text
-from data_prep.reuters_text import R8Text, R52Text
 from models.model import ClassifierModule
-from models.model import ClassifierModule, GraphModel
-from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
@@ -26,15 +23,17 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 LOG_PATH = "./logs/"
 
-SUPPORTED_MODELS = ['roberta', 'gnn']
+SUPPORTED_MODELS = ['roberta', 'pure-gnn']
 SUPPORTED_DATASETS = ['R8Text', 'R52Text', 'R8Graph', 'R52Graph', 'AGNewsText']
 
 
-def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim,
-          dataset_name='R8Text'):
+def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, dataset_name):
     os.makedirs(LOG_PATH, exist_ok=True)
 
-    print(f'Configuration:\n model_name: {model_name} \n max epochs: {epochs}\n patience: {patience}'
+    if model_name not in SUPPORTED_MODELS:
+        raise ValueError("Model type '%s' is not supported." % model_name)
+
+    print(f'Configuration:\n model_name: {model_name}\n max epochs: {epochs}\n patience: {patience}'
           f'\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n warmup: {warmup}\n '
           f'weight_decay: {w_decay}\n cf_hidden_dim: {cf_hidden_dim}\n dataset_name: {dataset_name}\n')
 
@@ -42,24 +41,23 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
 
     # the data preprocessing
 
-    train_dataloader, test_dataloader, val_dataloader = get_dataloaders(model_name, b_size, dataset_name)
+    train_loader, test_loader, val_loader, additional_params = get_dataloaders(model_name, b_size, dataset_name)
 
     optimizer_hparams = {"lr": l_rate, "weight_decay": w_decay, "warmup": warmup, "max_iters": max_iters}
 
-    if model_name == 'roberta':
-        model_params = {'model': model_name, "num_classes": train_dataset.num_classes, "cf_hid_dim": cf_hidden_dim}
-        model = ClassifierModule(model_params, optimizer_hparams)
-    elif model_name == 'pure_gnn':
-        model = GraphModel(len(dataset.iton), optimizer_hparams)
-    else:
-        raise ValueError("Model type '%s' is not supported." % model_name)
+    model_params = {
+        'model': model_name,
+        "cf_hid_dim": cf_hidden_dim,
+        **additional_params
+    }
 
+    model = ClassifierModule(model_params, optimizer_hparams)
     trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup)
 
     # Training
     print('Fitting model ..........\n')
     start = time.time()
-    trainer.fit(model, train_dataloader, val_dataloader)
+    trainer.fit(model, train_loader, val_loader)
 
     end = time.time()
     elapsed = end - start
@@ -71,7 +69,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
     print(f'Best model path: {best_model_path}')
 
     model = model.load_from_checkpoint(best_model_path)
-    test_acc, val_acc = evaluate(trainer, model, test_dataloader, val_dataloader)
+    test_acc, val_acc = evaluate(trainer, model, test_loader, val_loader)
 
     # We want to save the whole model, because we fine-tune anyways!
 
@@ -80,21 +78,28 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
 
 def get_dataloaders(model, b_size, dataset_name):
     dataset = get_dataset(dataset_name)
+    additional_params = {}
 
     if model == 'roberta':
         tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
         train_dataset, test_dataset, val_dataset = dataset.splits(tokenizer, val_size=0.1)
 
+        additional_params['num_classes'] = train_dataset.num_classes
+
         train_dataloader = text_dataloader(train_dataset, b_size, shuffle=True)
         test_dataloader = text_dataloader(test_dataset, b_size, shuffle=True)
         val_dataloader = text_dataloader(val_dataset, b_size, shuffle=True)
 
-    elif model == 'pure_gnn':
+    elif model == 'pure-gnn':
         train_dataloader = geom_data.DataLoader(dataset, batch_size=1)
         val_dataloader = geom_data.DataLoader(dataset, batch_size=1)
         test_dataloader = geom_data.DataLoader(dataset, batch_size=1)
 
-    return train_dataloader, test_dataloader, val_dataloader
+        additional_params['num_nodes'] = len(dataset.iton)
+    else:
+        raise ValueError("Model type '%s' is not supported." % model)
+
+    return train_dataloader, test_dataloader, val_dataloader, additional_params
 
 
 def text_dataloader(dataset, b_size, shuffle=False):
@@ -196,7 +201,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--dataset', dest='dataset', default='R8Graph', choices=SUPPORTED_DATASETS,
                         help='Select the dataset you want to use.')
-    parser.add_argument('--model', dest='model', default='pure_gnn', choices=SUPPORTED_MODELS,
+    parser.add_argument('--model', dest='model', default='pure-gnn', choices=SUPPORTED_MODELS,
                         help='Select the model you want to use.')
     parser.add_argument('--seed', dest='seed', type=int, default=1234)
     parser.add_argument('--cf-hidden-dim', dest='cf_hidden_dim', type=int, default=512)

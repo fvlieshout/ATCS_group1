@@ -10,7 +10,9 @@ pytorch-lightning==1.0.3
 #torch-geometric
 
 numpy==1.19.2
-tqdm==4.50.2
+matplotlib==3.4.2
+datasets==1.6.2
+tqdm==4.49.0    # this version because required by datasets
 nltk
 sklearn
 
