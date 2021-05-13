@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-from data_prep.dataset import HuggingFaceDataset
+from data_prep.dataset import HuggingFaceDatasetText
 
 
-class AGNewsText(HuggingFaceDataset):
+class AGNewsText(HuggingFaceDatasetText):
     """
     Wrapper for the AGNews dataset.
     """
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

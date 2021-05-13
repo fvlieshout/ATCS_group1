@@ -234,7 +234,7 @@ class Reuters(Dataset):
         unique_classes = sorted(data.keys())
         return (train_docs, test_docs, val_docs), unique_classes
 
-class HuggingFaceDataset(TextDataset):
+class HuggingFaceDatasetText(TextDataset):
     """
     Parent class HuggingFace text datasets. To use this class, 
     the underlying HuggingFace dataset must have a text and a label attribute.
@@ -309,3 +309,4 @@ class HuggingFaceDataset(TextDataset):
     
     def __len__(self):
         return len(self.labels)
+
