@@ -2,13 +2,12 @@
 
 #SBATCH --partition=gpu_titanrtx_shared_course
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=roberta_job
+#SBATCH --job-name=train_GNN
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=6
-#SBATCH --time=10:00:00
+#SBATCH --cpus-per-task=3
+#SBATCH --time=05:00:00
 #SBATCH --mem=32000M
-#SBATCH --array=1
-#SBATCH --output=logs/job_outputs/roberta_%A_%a.out
+#SBATCH --output=output/slurm_output_%A.out
 
 module purge
 module load 2019
@@ -20,10 +19,7 @@ module load Anaconda3/2018.12
 
 # Your job starts in the directory where you call sbatch
 cd $HOME/ATCS_group1
-
 # Activate your environment
 source activate gnn-env
-
-PARAMETERS_FILE=parameters.txt
-
-srun python -u train.py $(head -$SLURM_ARRAY_TASK_ID $PARAMETERS_FILE | tail -1)
+# Run your code
+srun python -u graph_train.py

@@ -5,14 +5,15 @@ import time
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
 import torch
+import torch_geometric.data as geom_data
+from data_prep.agnews_text import AGNewsText
+from data_prep.reuters_graph import R8Graph, R52Graph
+from data_prep.reuters_text import R8Text, R52Text
+from models.model import ClassifierModule
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 from transformers import RobertaTokenizerFast
-from transformers.data.data_collator import default_data_collator
-
-from data_prep.reuters_text import R8, R52
-from data_prep.agnews_text import AGNews
-from models.model import ClassifierModule
 
 # disable parallelism for hugging face to avoid deadlocks
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -22,45 +23,41 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 LOG_PATH = "./logs/"
 
-SUPPORTED_MODELS = ['roberta']
-SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews']
+SUPPORTED_MODELS = ['roberta', 'pure-gnn']
+SUPPORTED_DATASETS = ['R8Text', 'R52Text', 'R8Graph', 'R52Graph', 'AGNewsText', 'AGNewsGraph']
 
 
-def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_lr, cf_hidden_dim, dataset_name='R8'):
+def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, dataset_name):
     os.makedirs(LOG_PATH, exist_ok=True)
+
+    if model_name not in SUPPORTED_MODELS:
+        raise ValueError("Model type '%s' is not supported." % model_name)
+
+    print(f'Configuration:\n model_name: {model_name}\n max epochs: {epochs}\n patience: {patience}'
+          f'\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n warmup: {warmup}\n '
+          f'weight_decay: {w_decay}\n cf_hidden_dim: {cf_hidden_dim}\n dataset_name: {dataset_name}\n')
 
     pl.seed_everything(seed)
 
-    # the data preprocessing per model
+    # the data preprocessing
 
-    dataset = get_dataset(dataset_name)
+    train_loader, test_loader, val_loader, additional_params = get_dataloaders(model_name, b_size, dataset_name)
 
-    if model_name == 'roberta':
+    optimizer_hparams = {"lr": l_rate, "weight_decay": w_decay, "warmup": warmup, "max_iters": max_iters}
 
-        # Prepare the data
-
-        tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
-
-        train_dataset, test_dataset, val_dataset = dataset.splits(tokenizer, val_size=0.1)
-
-        train_dataloader = data_loader(b_size, train_dataset, shuffle=True)
-        test_dataloader = data_loader(b_size, test_dataset)
-        val_dataloader = data_loader(b_size, val_dataset)
-
-    else:
-        raise ValueError("Model type '%s' is not supported." % model_name)
-
-    model_params = {'model': model_name, "num_classes": 8 if dataset == R8 else 52, "cf_hid_dim": cf_hidden_dim}
-    optimizer_hparams = {"lr": l_rate, "weight_decay": l_decay}
+    model_params = {
+        'model': model_name,
+        'cf_hid_dim': cf_hidden_dim,
+        **additional_params
+    }
 
     model = ClassifierModule(model_params, optimizer_hparams)
-
-    trainer = initialize_trainer(epochs, patience, minimum_lr, model_name)
+    trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup)
 
     # Training
     print('Fitting model ..........\n')
     start = time.time()
-    trainer.fit(model, train_dataloader, val_dataloader)
+    trainer.fit(model, train_loader, val_loader)
 
     end = time.time()
     elapsed = end - start
@@ -72,15 +69,41 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, l_decay, minimum_l
     print(f'Best model path: {best_model_path}')
 
     model = model.load_from_checkpoint(best_model_path)
-    test_acc, val_acc = evaluate(trainer, model, test_dataloader, val_dataloader)
+    test_acc, val_acc = evaluate(trainer, model, test_loader, val_loader)
 
     # We want to save the whole model, because we fine-tune anyways!
 
     return test_acc, val_acc
 
 
-def data_loader(b_size, dataset, shuffle=False):
-    return DataLoader(dataset, batch_size=b_size, num_workers=24, shuffle=shuffle, collate_fn=default_data_collator)
+def get_dataloaders(model, b_size, dataset_name):
+    dataset = get_dataset(dataset_name)
+    additional_params = {}
+
+    if model == 'roberta':
+        tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
+        train_dataset, test_dataset, val_dataset = dataset.splits(tokenizer, val_size=0.1)
+
+        additional_params['num_classes'] = train_dataset.num_classes
+
+        train_dataloader = text_dataloader(train_dataset, b_size, shuffle=True)
+        test_dataloader = text_dataloader(test_dataset, b_size)
+        val_dataloader = text_dataloader(val_dataset, b_size)
+
+    elif model == 'pure-gnn':
+        train_dataloader = geom_data.DataLoader(dataset, batch_size=1)
+        val_dataloader = geom_data.DataLoader(dataset, batch_size=1)
+        test_dataloader = geom_data.DataLoader(dataset, batch_size=1)
+
+        additional_params['num_nodes'] = len(dataset.iton)
+    else:
+        raise ValueError("Model type '%s' is not supported." % model)
+
+    return train_dataloader, test_dataloader, val_dataloader, additional_params
+
+
+def text_dataloader(dataset, b_size, shuffle=False):
+    return DataLoader(dataset, batch_size=b_size, num_workers=24, shuffle=shuffle, collate_fn=dataset.get_collate_fn())
 
 
 def evaluate(trainer, model, test_dataloader, val_dataloader):
@@ -92,27 +115,33 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
 
     test_start = time.time()
 
+    model.test_val_mode = 'test'
     test_result = trainer.test(model, test_dataloaders=test_dataloader, verbose=False)[0]
     test_accuracy = test_result["test_accuracy"]
 
+    model.test_val_mode = 'val'
     val_result = trainer.test(model, test_dataloaders=val_dataloader, verbose=False)[0]
     val_accuracy = val_result["test_accuracy"] if "val_accuracy" not in val_result else val_result["val_accuracy"]
+    model.test_val_mode = 'test'
 
     test_end = time.time()
     test_elapsed = test_end - test_start
 
     print(f'\nRequired time for testing: {int(test_elapsed / 60)} minutes.\n')
-    print(f'Test Results:\n test accuracy: {test_accuracy}\n validation accuracy: {val_accuracy}'
+    print(f'Test Results:\n test accuracy: {round(test_accuracy, 3)} ({test_accuracy})\n '
+          f'validation accuracy: {round(val_accuracy, 3)} ({val_accuracy})'
           f'\n epochs: {trainer.current_epoch + 1}\n')
 
     return test_accuracy, val_accuracy
 
 
-def initialize_trainer(epochs, patience, minimum_lr, model):
+def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmup):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
-    log_dir = os.path.join(LOG_PATH, model)
-    os.makedirs(log_dir + "/lightning_logs", exist_ok=True)
+    os.makedirs(LOG_PATH, exist_ok=True)
+
+    version_str = f'patience={patience}_lr={l_rate}_wdec={weight_decay}_wsteps={warmup}'
+    logger = TensorBoardLogger(LOG_PATH, name=model_name, version=version_str)
 
     early_stop_callback = EarlyStopping(
         monitor='val_accuracy',
@@ -122,7 +151,7 @@ def initialize_trainer(epochs, patience, minimum_lr, model):
         mode='max'
     )
 
-    trainer = pl.Trainer(default_root_dir=log_dir,
+    trainer = pl.Trainer(logger=logger,
                          checkpoint_callback=model_checkpoint,
                          gpus=1 if torch.cuda.is_available() else 0,
                          max_epochs=epochs,
@@ -136,27 +165,19 @@ def initialize_trainer(epochs, patience, minimum_lr, model):
 
 
 def get_dataset(dataset_name):
-    if dataset_name == "R8":
-        return R8
-    elif dataset_name == "R52":
-        return R52
-    elif dataset_name == "AGNews":
-        return AGNews
+    device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+    if dataset_name == "R8Text":
+        return R8Text
+    elif dataset_name == "R52Text":
+        return R52Text
+    elif dataset_name == "AGNewsText":
+        return AGNewsText
+    elif dataset_name == 'R8Graph':
+        return R8Graph(device)
+    elif dataset_name == 'R52Graph':
+        return R52Graph(device)
     else:
         raise ValueError("Dataset '%s' is not supported." % dataset_name)
-
-
-class LearningRateStopping(pl.Callback):
-
-    def __init__(self, min_value):
-        super().__init__()
-        self.min_value = min_value
-
-    def on_validation_end(self, trainer, pl_module):
-        current_lr = trainer.optimizers[0].param_groups[0]['lr']
-        if current_lr is not None and current_lr <= self.min_value:
-            print('Stopping training current LR ' + str(current_lr) + ' min LR ' + str(self.min_value))
-            trainer.should_stop = True
 
 
 if __name__ == "__main__":
@@ -164,18 +185,23 @@ if __name__ == "__main__":
 
     # TRAINING PARAMETERS
 
-    parser.add_argument('--epochs', dest='epochs', type=int, default=40)
+    parser.add_argument('--epochs', dest='epochs', type=int, default=50)
     parser.add_argument('--patience', dest='patience', type=int, default=10)
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
     parser.add_argument('--lr', dest='l_rate', type=float, default=1e-4)
     parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=1e-5, help="Minimum Learning Rate")
-    parser.add_argument("--lr-decay", dest='lr_decay', type=float, default=1e-3, help="Learning rate (weight) decay")
+    parser.add_argument("--w-decay", dest='w_decay', type=float, default=1e-3,
+                        help="Weight decay for L2 regularization of optimizer AdamW")
+    parser.add_argument("--warmup", dest='warmup', type=int, default=100,
+                        help="Number of steps for which we do learning rate warmup.")
+    parser.add_argument("--max-iters", dest='max_iters', type=int, default=2000,
+                        help="Max iterations for learning rate warmup.")
 
     # CONFIGURATION
 
-    parser.add_argument('--dataset', dest='dataset', default='R8', choices=SUPPORTED_DATASETS,
+    parser.add_argument('--dataset', dest='dataset', default='R8Graph', choices=SUPPORTED_DATASETS,
                         help='Select the dataset you want to use.')
-    parser.add_argument('--model', dest='model', default='roberta', choices=SUPPORTED_MODELS,
+    parser.add_argument('--model', dest='model', default='pure-gnn', choices=SUPPORTED_MODELS,
                         help='Select the model you want to use.')
     parser.add_argument('--seed', dest='seed', type=int, default=1234)
     parser.add_argument('--cf-hidden-dim', dest='cf_hidden_dim', type=int, default=512)
@@ -189,8 +215,9 @@ if __name__ == "__main__":
         patience=params['patience'],
         b_size=params["batch_size"],
         l_rate=params["l_rate"],
-        l_decay=params["lr_decay"],
-        minimum_lr=params["minimum_lr"],
+        w_decay=params["w_decay"],
+        warmup=params["warmup"],
+        max_iters=params["max_iters"],
         cf_hidden_dim=params["cf_hidden_dim"],
         dataset_name=params["dataset"]
     )

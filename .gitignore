@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.ckpt
+events.out.*
+*.json
 
 # C extensions
 *.so
@@ -134,9 +137,15 @@ dmypy.json
 # nltk
 .data/
 
-# Custom Folders/Files
+# Model files
 .idea
-/runs
 /logs
 hparams.yaml
-/job_outputs
+
+# Custom files Floor
+output/
+get_cuda.job
+get_imports.job
+floor_test.py
+gnn-env.yml
+environment_Lisa*
