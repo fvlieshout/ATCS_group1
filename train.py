@@ -24,7 +24,7 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 LOG_PATH = "./logs/"
 
 SUPPORTED_MODELS = ['roberta', 'pure-gnn']
-SUPPORTED_DATASETS = ['R8Text', 'R52Text', 'R8Graph', 'R52Graph', 'AGNewsText']
+SUPPORTED_DATASETS = ['R8Text', 'R52Text', 'R8Graph', 'R52Graph', 'AGNewsText', 'AGNewsGraph']
 
 
 def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, dataset_name):
