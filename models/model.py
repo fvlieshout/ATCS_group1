@@ -122,7 +122,7 @@ class TransformerClassifier(nn.Module):
 
     # needs to be there to catch additional parameter modeL
     # noinspection PyUnusedLocal
-    def forward(self, batch, *args):
+    def forward(self, batch, **kwargs):
         inputs, attention_mask = batch['input_ids'], batch['attention_mask']
 
         out = self.encoder(inputs, attention_mask)
