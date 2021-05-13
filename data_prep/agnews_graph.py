@@ -1,84 +1,43 @@
-from nltk.tokenize.regexp import WordPunctTokenizer
 import torch
-from torch_geometric.data import Data
-
-from data_prep.graph_utils import pmi, tf_idf_mtx
 from data_prep.dataset import GraphDataset
+from data_prep.graph_utils import tf_idf_mtx
 from datasets import load_dataset
+from nltk.tokenize.regexp import WordPunctTokenizer
+from torch_geometric.data import Data
 
 
 class AGNewsGraph(GraphDataset):
-    def __init__(self, device, val_size=0.1, train_doc=None):
+    def __init__(self, device, val_size=0.1, n_train_docs=None):
         """
         Creates the train, test, and validation splits for AGNews.
         Args:
             device (Device): Device to use to store the dataset.
             val_size (float, optional): Proportion of training documents to include in the validation set.
-            train_doc (int, optional): Number of documents to use from the training set. If None, include all.
+            n_train_docs (int, optional): Number of documents to use from the training set. If None, include all.
         Returns:
             train_split (Dataset): Training split.
             test_split (Dataset): Test split.
             val_split (Dataset): Validation split.
         """
-        self.device = device
-        self.train_doc = train_doc
+        super(GraphDataset, self).__init__(device, n_train_docs)
 
         print('Prepare AGNews dataset')
-        docs, labels, classes = self.prepare_agnews(val_size, train_doc)
-        train_docs, test_docs, val_docs = docs
+        docs, labels, classes = self.prepare_agnews(val_size, n_train_docs)
+
         train_labels, test_labels, val_labels = labels
+        self.all_labels = train_labels + test_labels + val_labels
 
-        all_docs = train_docs + test_docs + val_docs
-        all_labels = train_labels + test_labels + val_labels
+        self.tokenizer = WordPunctTokenizer()  # TODO: look into a better one?
 
-        tokenizer = WordPunctTokenizer() # TODO: look into a better one?
-        corpus = [tokenizer.tokenize(sentence) for sentence in all_docs]
-
-        print('Compute tf.idf')
-        tf_idf, words = tf_idf_mtx(corpus)
-
-        print('Compute PMI scores')
-        pmi_score = pmi(corpus)
-
-        # Index to node name mapping
-        self.iton = list(all_docs + words)
-        # Node name to index mapping
-        self.ntoi = {self.iton[i]: i for i in range(len(self.iton))}
-
-        # Edge index and values for dataset
-        print('Generate edges')
-        edge_index, edge_attr = self.generate_edges(len(all_docs), tf_idf, pmi_score)
-
-        # Index to label mapping
-        self.itol = classes
-        # Label in index mapping
-        self.loti = {self.itol[i]: i for i in range(len(self.itol))}
-        # Labels to node mapping, where word nodes get the label of -1
-        ntol = all_labels + [-1] * len(words)
-        ntol = torch.tensor(ntol, device=device)
-
-        # Generate masks/splits
-        print('Generate masks')
-        train_mask, val_mask, test_mask = self.generate_masks(len(train_docs), len(val_docs), len(test_docs))
-
-        # Feature matrix is Identity (according to TextGCN)
-        print('Generate feature matrix')
-        node_feats = torch.eye(len(self.iton), device=self.device).float()
-        print('Features mtx is {} GBs in size'.format(node_feats.nelement() * node_feats.element_size() * 1e-9))
-
-        # Create pytorch geometric format data
-        self.data = Data(x=node_feats, edge_index=edge_index, edge_attr=edge_attr, y=ntol)
-        self.data.train_mask = train_mask
-        self.data.val_mask = val_mask
-        self.data.test_mask = test_mask
+        super(GraphDataset, self).initialize_data(docs, classes)
 
     @staticmethod
-    def prepare_agnews(val_size=0.1, train_doc=None):
+    def prepare_agnews(val_size=0.1, n_train_docs=None):
         """
         Return the training, validation, and tests splits along with the classes of AGNews dataset.
         Args:
             val_size (float, optional): Proportion of training documents to include in the validation set.
-            train_doc (int, optional): Number of documents to use from the training set. If None, include all.
+            n_train_docs (int, optional): Number of documents to use from the training set. If None, include all.
         Returns:
             splits (tuple): Tuple containing 3 list of strings for training, test, and validation datasets.
             labels (tuple): Tuple containing 3 list of labels for training, test, and validation datasets.
@@ -97,17 +56,31 @@ class AGNewsGraph(GraphDataset):
 
         unique_classes = train_val_splits["train"].features["label"].names
 
-        if train_doc is not None:
+        if n_train_docs is not None:
             # For testing with only a few docs:
-            test_val_num_docs = int(val_size * train_doc)
-            docs = (list(train_texts[:train_doc]), list(test_texts[:test_val_num_docs]), list(val_texts[:test_val_num_docs]))
-            labels = (list(train_labels[:train_doc]), list(test_labels[:test_val_num_docs]), list(val_labels[:test_val_num_docs]))
+            n_test_val_docs = int(val_size * n_train_docs)
+            docs = (list(train_texts[:n_train_docs]), list(test_texts[:n_test_val_docs]),
+                    list(val_texts[:n_test_val_docs]))
+            labels = (list(train_labels[:n_train_docs]), list(test_labels[:n_test_val_docs]),
+                      list(val_labels[:n_test_val_docs]))
         else:
             docs = (list(train_texts), list(test_texts), list(val_texts))
             labels = (list(train_labels), list(test_labels), list(val_labels))
-        
+
         return docs, labels, unique_classes
-    
+
+    def get_label_node_mapping(self):
+        return self.all_labels + [-1] * self.n_words
+
+    def pre_process_words(self, all_docs):
+        return [self.tokenizer.tokenize(sentence) for sentence in all_docs]
+
     @property
     def num_classes(self):
         return len(self.itol)
+
+    def __getitem__(self, idx):
+        return self.data
+
+    def __len__(self):
+        return 1

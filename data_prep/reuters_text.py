@@ -67,7 +67,8 @@ class ReutersText(Reuters, TextDataset):
 
         return texts, labels
 
-    def get_collate_fn(self):
+    @staticmethod
+    def get_collate_fn():
         """
         No specific collate function required.
         """

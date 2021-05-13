@@ -5,7 +5,14 @@ module load 2019
 module load Anaconda3/2018.12
 
 conda env remove -y -n gnn-env
-conda create -y -n gnn-env python=3.7.5
+
+# maybe try to install the other env and then install these things in that env
+#conda env create -f env.yaml
+
+conda create -y -n gnn-env python=3.7.5 pytorch==1.7.1
+
+#conda activate gnn-env
+
 source activate gnn-env
 
 pip3 install torch==1.7.1+cu101 -f https://download.pytorch.org/whl/torch_stable.html
