@@ -26,18 +26,15 @@ class ClassifierModule(pl.LightningModule):
 
         self.loss_module = nn.CrossEntropyLoss()
 
-        model = model_hparams['model']
-        if model == 'roberta':
+        model_name = model_hparams['model']
+        if model_name == 'roberta':
             self.model = TransformerClassifier(model_hparams)
-        elif model == 'pure-gnn':
+        elif model_name == 'pure-gnn':
             self.model = GraphClassifier(model_hparams)
         else:
-            raise ValueError("Model type '%s' is not supported." % model)
+            raise ValueError("Model type '%s' is not supported." % model_name)
 
         self.lr_scheduler = None
-
-    def forward(self, batch, mode):
-        return self.model(batch, mode)
 
     def configure_optimizers(self):
         optimizer = AdamW(self.parameters(), lr=self.hparams.optimizer_hparams['lr'],
@@ -59,10 +56,8 @@ class ClassifierModule(pl.LightningModule):
             batch_idx     - Index of the batch in the dataset (not needed here).
         """
         # "batch" is the output of the training data loader
-        predictions, labels = self.forward(batch, mode='train')
+        predictions, labels = self.model(batch, mode='train')
         loss = self.loss_module(predictions, labels)
-
-        # print('loss ' + str(loss.item()))
 
         self.log('train_accuracy', self.accuracy(predictions, labels).item(), on_step=False, on_epoch=True)
         self.log('train_loss', loss)
@@ -74,11 +69,11 @@ class ClassifierModule(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         # By default logs it per epoch (weighted average over batches)
-        self.log('val_accuracy', self.accuracy(*self.forward(batch, mode='val')))
+        self.log('val_accuracy', self.accuracy(*self.model(batch, mode='val')))
 
     def test_step(self, batch, batch_idx):
         # By default logs it per epoch (weighted average over batches)
-        self.log('test_accuracy', self.accuracy(*self.forward(batch, mode='test')))
+        self.log('test_accuracy', self.accuracy(*self.model(batch, mode='test')))
 
     @staticmethod
     def accuracy(predictions, labels):
@@ -86,6 +81,7 @@ class ClassifierModule(pl.LightningModule):
         return (labels == predictions.argmax(dim=-1)).float().mean()
 
 
+# noinspection PyProtectedMember
 class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
 
     def __init__(self, optimizer, warmup, max_iters):
@@ -124,7 +120,8 @@ class TransformerClassifier(nn.Module):
             nn.Linear(cf_hidden_dim, model_hparams['num_classes'])
         )
 
-    # noinspection PyUnusedLocal; needs to be there to catch additional parameter mode
+    # needs to be there to catch additional parameter modeL
+    # noinspection PyUnusedLocal
     def forward(self, batch, *args):
         inputs, attention_mask = batch['input_ids'], batch['attention_mask']
 
