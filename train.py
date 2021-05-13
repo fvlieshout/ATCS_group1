@@ -188,11 +188,10 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', dest='epochs', type=int, default=50)
     parser.add_argument('--patience', dest='patience', type=int, default=10)
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
-    parser.add_argument('--lr', dest='l_rate', type=float, default=1e-4)
-    parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=1e-5, help="Minimum Learning Rate")
-    parser.add_argument("--w-decay", dest='w_decay', type=float, default=1e-3,
+    parser.add_argument('--lr', dest='l_rate', type=float, default=5e-3)
+    parser.add_argument("--w-decay", dest='w_decay', type=float, default=2e-3,
                         help="Weight decay for L2 regularization of optimizer AdamW")
-    parser.add_argument("--warmup", dest='warmup', type=int, default=100,
+    parser.add_argument("--warmup", dest='warmup', type=int, default=500,
                         help="Number of steps for which we do learning rate warmup.")
     parser.add_argument("--max-iters", dest='max_iters', type=int, default=2000,
                         help="Max iterations for learning rate warmup.")
