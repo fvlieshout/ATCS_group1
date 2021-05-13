@@ -2,7 +2,7 @@ from nltk.tokenize.regexp import WordPunctTokenizer
 import torch
 from torch_geometric.data import Data
 
-from data_prep.graph_utils import pmi, tf_idf_mtx
+from data_prep.graph_utils import get_PMI, tf_idf_mtx
 from data_prep.dataset import GraphDataset
 from datasets import load_dataset
 
@@ -34,7 +34,7 @@ class AGNewsGraph(GraphDataset):
         tf_idf, words = tf_idf_mtx(corpus)
 
         print('Compute PMI scores')
-        pmi_score = pmi(corpus)
+        pmi_score = get_PMI(corpus)
 
         # Index to node name mapping
         self.iton = list(all_docs + words)

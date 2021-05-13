@@ -9,7 +9,6 @@ from data_prep.graph_utils import tf_idf_mtx, get_PMI
 from data_prep.dataset import GraphDataset, Reuters
 
 
-
 class ReutersGraph(GraphDataset, Reuters):
     def __init__(self, device, r8=False, val_size=0.1, train_doc=None):
         """
