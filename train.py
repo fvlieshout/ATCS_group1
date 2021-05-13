@@ -52,7 +52,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
     }
 
     model = ClassifierModule(model_params, optimizer_hparams)
-    trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup)
+    trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, dataset_name)
 
     # Training
     print('Fitting model ..........\n')
@@ -135,12 +135,12 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
     return test_accuracy, val_accuracy
 
 
-def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmup):
+def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmup, seed, dataset):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
     os.makedirs(LOG_PATH, exist_ok=True)
 
-    version_str = f'patience={patience}_lr={l_rate}_wdec={weight_decay}_wsteps={warmup}'
+    version_str = f'dname={dataset}_seed={seed}_lr={l_rate}_wdec={weight_decay}_wsteps={warmup}'
     logger = TensorBoardLogger(LOG_PATH, name=model_name, version=version_str)
 
     early_stop_callback = EarlyStopping(
