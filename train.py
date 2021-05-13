@@ -47,7 +47,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
 
     model_params = {
         'model': model_name,
-        "cf_hid_dim": cf_hidden_dim,
+        'cf_hid_dim': cf_hidden_dim,
         **additional_params
     }
 
@@ -87,8 +87,8 @@ def get_dataloaders(model, b_size, dataset_name):
         additional_params['num_classes'] = train_dataset.num_classes
 
         train_dataloader = text_dataloader(train_dataset, b_size, shuffle=True)
-        test_dataloader = text_dataloader(test_dataset, b_size, shuffle=True)
-        val_dataloader = text_dataloader(val_dataset, b_size, shuffle=True)
+        test_dataloader = text_dataloader(test_dataset, b_size)
+        val_dataloader = text_dataloader(val_dataset, b_size)
 
     elif model == 'pure-gnn':
         train_dataloader = geom_data.DataLoader(dataset, batch_size=1)

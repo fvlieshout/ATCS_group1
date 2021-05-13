@@ -29,7 +29,7 @@ class ClassifierModule(pl.LightningModule):
         model = model_hparams['model']
         if model == 'roberta':
             self.model = TransformerClassifier(model_hparams)
-        if model == 'pure-gnn':
+        elif model == 'pure-gnn':
             self.model = GraphClassifier(model_hparams)
         else:
             raise ValueError("Model type '%s' is not supported." % model)
@@ -61,7 +61,9 @@ class ClassifierModule(pl.LightningModule):
         # "batch" is the output of the training data loader
         predictions, labels = self.forward(batch, mode='train')
         loss = self.loss_module(predictions, labels)
-        print('loss ' + loss.item())
+
+        # print('loss ' + str(loss.item()))
+
         self.log('train_accuracy', self.accuracy(predictions, labels).item(), on_step=False, on_epoch=True)
         self.log('train_loss', loss)
 
@@ -72,34 +74,16 @@ class ClassifierModule(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         # By default logs it per epoch (weighted average over batches)
-        accuracy = self.accuracy(*self.forward(batch, mode='val'))
-        print('val acc: ' + accuracy)
-        self.log('val_accuracy', accuracy)
+        self.log('val_accuracy', self.accuracy(*self.forward(batch, mode='val')))
 
     def test_step(self, batch, batch_idx):
         # By default logs it per epoch (weighted average over batches)
-        accuracy = self.accuracy(*self.forward(batch, mode='test'))
-        print('test acc: ' + accuracy)
-        self.log('test_accuracy', accuracy)
+        self.log('test_accuracy', self.accuracy(*self.forward(batch, mode='test')))
 
     @staticmethod
     def accuracy(predictions, labels):
-
-        if self.hparams.model_hparams['model'] == 'roberta':
-            # noinspection PyUnresolvedReferences
-            return (labels == predictions.argmax(dim=-1)).float().mean()
-        elif self.hparams.model_hparams['model'] == 'pure-gnn':
-            class_predictions = torch.argmax(out, dim=1)
-
-            if mode == 'val':
-                print('preds:', class_predictions[:20])
-                print('real:', data.y[:20])
-
-            correct = (class_predictions[mask] == targets).sum().item()
-            accuracy = correct / mask.sum()
-            return accuracy
-        else:
-            raise ValueError("Model type '%s' is not supported." % model)
+        # noinspection PyUnresolvedReferences
+        return (labels == predictions.argmax(dim=-1)).float().mean()
 
 
 class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
@@ -140,6 +124,7 @@ class TransformerClassifier(nn.Module):
             nn.Linear(cf_hidden_dim, model_hparams['num_classes'])
         )
 
+    # noinspection PyUnusedLocal; needs to be there to catch additional parameter mode
     def forward(self, batch, *args):
         inputs, attention_mask = batch['input_ids'], batch['attention_mask']
 
@@ -195,9 +180,7 @@ class GraphClassifier(nn.Module):
     def __init__(self, model_hparams):
         super().__init__()
 
-        # device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-
-        self.model = GraphNet(model_hparams['num_nodes'])#.to(device)
+        self.model = GraphNet(model_hparams['num_nodes'])
         self.test_val_mode = 'test'
 
     def forward(self, data, mode):
@@ -216,36 +199,3 @@ class GraphClassifier(nn.Module):
         targets = data.y[mask]
 
         return predictions, targets
-
-        # loss = F.cross_entropy(predictions, targets)
-        # loss = F.nll_loss(out[data.train_mask], data.y[data.train_mask])
-
-        # class_predictions = torch.argmax(out, dim=1)
-        #
-        # if mode == 'val':
-        #     print('preds:', class_predictions[:20])
-        #     print('real:', data.y[:20])
-        #
-        # correct = (class_predictions[mask] == targets).sum().item()
-        # accuracy = correct / mask.sum()
-
-        # if math.isnan(loss.item()):
-        #     print()
-
-        # return loss, accuracy
-
-    # def training_step(self, batch, batch_idx):
-    #     loss, acc = self.forward(batch, mode='train')
-    #     self.log("train_loss", loss, on_step=False, on_epoch=True)
-    #     self.log("train_accuracy", acc, on_step=False, on_epoch=True)
-    #     return loss
-    #
-    # def validation_step(self, batch, batch_idx):
-    #     loss, acc = self.forward(batch, mode='val')
-    #     # self.log("val_loss", loss)
-    #     self.log("val_accuracy", acc)
-    #
-    # def test_step(self, batch, batch_idx):
-    #     loss, acc = self.forward(batch, mode=self.test_val_mode)
-    #     # self.log("test_loss", loss)
-    #     self.log("test_accuracy", acc)
