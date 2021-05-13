@@ -9,7 +9,7 @@ class AGNewsText(TextDataset):
         self.labels = labels
         self.classes = classes
         self.tokenizer = tokenizer
-    
+
     @classmethod
     def splits(cls, tokenizer, val_size=0.1):
         """
@@ -31,45 +31,45 @@ class AGNewsText(TextDataset):
         train_split = cls.get_split(tokenizer, train_val_splits["train"])
         val_split = cls.get_split(tokenizer, train_val_splits["test"])
         test_split = cls.get_split(tokenizer, dataset["test"])
-        
+
         return train_split, test_split, val_split
 
-    
+
     @classmethod
     def get_split(cls, tokenizer, dataset):
         texts, labels = cls._prepare_split(dataset)
         unique_cls = dataset.features["label"].names
         return cls(texts, labels, unique_cls, tokenizer)
-    
+
     @staticmethod
     def _prepare_split(dataset):
         texts = [data["text"] for data in dataset]
         labels = [data["label"] for data in dataset]
         return texts, labels
-    
+
     def get_collate_fn(self):
         def collate_fn(batch):
             texts = [data["text"] for data in batch]
             labels = [data["label"] for data in batch]
             encodings = self.tokenizer(texts, truncation=True, padding=True)
-            
+
             items = {key: torch.tensor(val) for key, val in encodings.items()}
             items["labels"] = torch.tensor(labels)
 
             return items
         return collate_fn
-    
+
     @property
     def num_classes(self):
         return len(self.classes)
-    
+
     def __getitem__(self, idx):
         item = {
             "text": self.texts[idx],
             "label": self.labels[idx]
         }
         return item
-    
+
     def __len__(self):
         return len(self.labels)
 
@@ -80,7 +80,7 @@ if __name__ == "__main__":
 
     tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
 
-    train_set, test_set, val_set = AGNews.splits(tokenizer)
+    train_set, test_set, val_set = AGNewsText.splits(tokenizer)
     print("train size=", len(train_set))
     print("test size=", len(test_set))
     print("val size=", len(val_set))
