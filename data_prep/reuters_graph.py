@@ -85,6 +85,9 @@ class ReutersGraph(GraphDataset, Reuters):
     def num_classes(self):
         return len(self.itol)
 
+    def __len__(self):
+        return len(self.ntol)
+
 
 class R52Graph(ReutersGraph):
     """

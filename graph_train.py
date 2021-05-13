@@ -1,26 +1,25 @@
 # BE AWARE, THIS FILE IS A DUPLICATE AND WILL BE DELETED IN THE FUTURE
 
-import os
 import argparse
-import torch
-from collections import defaultdict
+import os
 import random
+from collections import defaultdict
 
 import nltk
+import pytorch_lightning as pl
+import torch
+import torch.nn.functional as F
 import torch_geometric.data as geom_data
+from data_prep.graph_utils import get_PMI, tf_idf_mtx
 # nltk.download('reuters')
 # from nltk.corpus import reuters
 from data_prep.reuters_graph import R8Graph, R52Graph
-from torch_geometric.data import Data
-import torch.nn.functional as F
-from torch_geometric.nn import GCNConv
-import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-
-
-from data_prep.graph_utils import get_PMI, tf_idf_mtx
+from torch_geometric.data import Data
+from torch_geometric.nn import GCNConv
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+
 
 class Net(torch.nn.Module):
     def __init__(self, num_nodes):
@@ -36,20 +35,21 @@ class Net(torch.nn.Module):
         x = self.conv2(x, edge_index, edge_weight)
         return x
 
+
 class Graph_model(pl.LightningModule):
     def __init__(self, num_nodes):
         super().__init__()
         device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
         self.model = Net(num_nodes).to(device)
         self.save_hyperparameters()
-    
+
     def forward(self, data, mode):
         out = self.model(data)
-        if mode=='train':
+        if mode == 'train':
             mask = data.train_mask
-        elif mode=='val':
+        elif mode == 'val':
             mask = data.val_mask
-        elif mode=='test':
+        elif mode == 'test':
             mask = data.test_mask
         loss = F.cross_entropy(out[mask], data.y[mask])
         # loss = F.nll_loss(out[data.train_mask], data.y[data.train_mask])
@@ -59,7 +59,7 @@ class Graph_model(pl.LightningModule):
         # if math.isnan(loss.item()):
         #     print()
         return loss, accuracy
-    
+
     def configure_optimizers(self):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=0.01)
         return self.optimizer
@@ -80,6 +80,7 @@ class Graph_model(pl.LightningModule):
         self.log("test_loss", loss)
         self.log("test_acc", acc)
 
+
 class GenerateCallback(pl.Callback):
     def __init__(self):
         """
@@ -94,15 +95,17 @@ class GenerateCallback(pl.Callback):
         In this function, the dev accuracy is checked and the learning rate is adjusted if dev accuracy has decreased
         """
         val_acc = trainer.callback_metrics.get('val_acc').item()
-        print('Epoch [' + str(trainer.current_epoch+1) + ']; train_loss: ' + str(trainer.callback_metrics.get('train_loss').item())
-                     + '; val_loss: ' + str(trainer.callback_metrics.get('val_loss').item()) + ': val_acc: ' + str(val_acc))
+        print('Epoch [' + str(trainer.current_epoch + 1) + ']; train_loss: ' + str(
+            trainer.callback_metrics.get('train_loss').item())
+              + '; val_loss: ' + str(trainer.callback_metrics.get('val_loss').item()) + ': val_acc: ' + str(val_acc))
+
 
 def train_model(args):
     os.makedirs(args.log_dir, exist_ok=True)
 
-    if args.dataset=='r8':
+    if args.dataset == 'r8':
         dataset = R8Graph(device)
-    elif args.dataset=='r52':
+    elif args.dataset == 'r52':
         dataset = R52Graph(device)
 
     # data = data_object.data.to(device)
@@ -115,13 +118,13 @@ def train_model(args):
                          gpus=1 if torch.cuda.is_available() else 0,
                          max_epochs=args.epochs,
                          callbacks=[gen_callback],
-                         progress_bar_refresh_rate=1 if args.progress_bar else 0) 
-    trainer.logger._default_hp_metric = None 
+                         progress_bar_refresh_rate=1 if args.progress_bar else 0)
+    trainer.logger._default_hp_metric = None
 
     # Create model
     pl.seed_everything(args.seed)
     model = Graph_model(len(dataset.iton))
-    
+
     # optionally resume from a checkpoint
     if args.resume != None:
         if os.path.isfile(args.resume):
@@ -131,13 +134,13 @@ def train_model(args):
         else:
             print('=> no checkpoint found at %s' % args.resume)
 
-    #Training
+    # Training
     trainer.fit(model, graph_data_loader, graph_data_loader)
+
 
 if __name__ == '__main__':
     # Feel free to add more argument parameters
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     # Model hyperparameters
     parser.add_argument('--dataset', default='r8', type=str,
