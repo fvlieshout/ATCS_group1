@@ -17,7 +17,6 @@ class Dataset(data.Dataset, metaclass=abc.ABCMeta):
         """
         raise NotImplementedError
 
-    @property
     @abc.abstractmethod
     def labels(self):
         """
