@@ -6,7 +6,7 @@ import torch.utils.data as data
 class Dataset(data.Dataset, metaclass=abc.ABCMeta):
     """
     Parent class for all datasets.
-    Require to implement a num_classes and labels property.
+    Require to implement a num_classes property and a labels method.
     """
 
     @property
