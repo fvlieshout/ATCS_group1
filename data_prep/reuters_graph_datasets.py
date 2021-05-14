@@ -1,5 +1,6 @@
 from collections import defaultdict
 import random
+import os
 
 import nltk
 nltk.download('reuters')
