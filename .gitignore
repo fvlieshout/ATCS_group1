@@ -2,12 +2,8 @@
 output/
 get_cuda.job
 get_imports.job
-floor_test.py
 gnn-env.yml
 environment_Lisa*
-*.ckpt
-events.out.*
-*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -148,9 +144,15 @@ dmypy.json
 # nltk
 .data/
 
-# Custom Folders/Files
+# Model files
 .idea
-/runs
 /logs
 hparams.yaml
-/job_outputs
+
+# Custom files Floor
+output/
+get_cuda.job
+get_imports.job
+floor_test.py
+gnn-env.yml
+environment_Lisa*

@@ -1,11 +1,12 @@
+import numpy as np
 import pytorch_lightning as pl
 import torch
+import torch.nn.functional as F
 from torch import nn
 from torch import optim
 from torch.optim import AdamW
-from transformers import RobertaModel
-import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
+from transformers import RobertaModel
 
 
 class ClassifierModule(pl.LightningModule):
@@ -25,19 +26,28 @@ class ClassifierModule(pl.LightningModule):
 
         self.loss_module = nn.CrossEntropyLoss()
 
-        self.model = DocumentClassifier(model_hparams)
+        model_name = model_hparams['model']
+        if model_name == 'roberta':
+            self.model = TransformerClassifier(model_hparams)
+        elif model_name in ['pure_gnn', 'roberta_gnn']:
+            self.model = GraphClassifier(model_hparams, model_name)
+        else:
+            raise ValueError("Model type '%s' is not supported." % model_name)
 
-    def forward(self, batch):
-        return self.model(batch['input_ids'], batch['attention_mask']), batch['labels']
+        self.lr_scheduler = None
 
     def configure_optimizers(self):
-        optimizer = AdamW(self.parameters(), **self.hparams.optimizer_hparams)
+        optimizer = AdamW(self.parameters(), lr=self.hparams.optimizer_hparams['lr'],
+                          weight_decay=self.hparams.optimizer_hparams['weight_decay'])
 
-        # Disabling it for now as it prevented the model somehow to actually learn
-        # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1,
-        #                                       gamma=self.hparams.optimizer_hparams['weight_decay'])
+        self.lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=self.hparams.optimizer_hparams['warmup'],
+                                                  max_iters=self.hparams.optimizer_hparams['max_iters'])
 
-        return [optimizer], [] #[scheduler]
+        return [optimizer], []
+
+    def optimizer_step(self, *args, **kwargs):
+        super().optimizer_step(*args, **kwargs)
+        self.lr_scheduler.step()  # Step per iteration
 
     def training_step(self, batch, batch_idx):
         """
@@ -45,23 +55,25 @@ class ClassifierModule(pl.LightningModule):
             batch         - Input batch, output of the training loader.
             batch_idx     - Index of the batch in the dataset (not needed here).
         """
-
         # "batch" is the output of the training data loader
-        predictions, labels = self.forward(batch)
+        predictions, labels = self.model(batch, mode='train')
         loss = self.loss_module(predictions, labels)
 
         self.log('train_accuracy', self.accuracy(predictions, labels).item(), on_step=False, on_epoch=True)
         self.log('train_loss', loss)
 
+        # logging in optimizer step does not work, therefore here
+        self.log('lr_rate', self.lr_scheduler.get_lr()[0])
+
         return loss
 
     def validation_step(self, batch, batch_idx):
         # By default logs it per epoch (weighted average over batches)
-        self.log('val_accuracy', self.accuracy(*self.forward(batch)))
+        self.log('val_accuracy', self.accuracy(*self.model(batch, mode='val')))
 
     def test_step(self, batch, batch_idx):
         # By default logs it per epoch (weighted average over batches)
-        self.log('test_accuracy', self.accuracy(*self.forward(batch)))
+        self.log('test_accuracy', self.accuracy(*self.model(batch, mode='test')))
 
     @staticmethod
     def accuracy(predictions, labels):
@@ -69,7 +81,26 @@ class ClassifierModule(pl.LightningModule):
         return (labels == predictions.argmax(dim=-1)).float().mean()
 
 
-class DocumentClassifier(nn.Module):
+# noinspection PyProtectedMember
+class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
+
+    def __init__(self, optimizer, warmup, max_iters):
+        self.warmup = warmup
+        self.max_num_iters = max_iters
+        super().__init__(optimizer)
+
+    def get_lr(self):
+        lr_factor = self.get_lr_factor(epoch=self.last_epoch)
+        return [base_lr * lr_factor for base_lr in self.base_lrs]
+
+    def get_lr_factor(self, epoch):
+        lr_factor = 0.5 * (1 + np.cos(np.pi * epoch / self.max_num_iters))
+        if epoch <= self.warmup:
+            lr_factor *= epoch * 1.0 / self.warmup
+        return lr_factor
+
+
+class TransformerClassifier(nn.Module):
 
     def __init__(self, model_hparams):
         super().__init__()
@@ -78,7 +109,7 @@ class DocumentClassifier(nn.Module):
         if model == 'roberta':
             self.encoder = TransformerModel()
         else:
-            raise ValueError("Model type '%s' is not supported." % model)
+            raise ValueError("Transformer type '%s' is not supported." % model)
 
         cf_hidden_dim = model_hparams['cf_hid_dim']
 
@@ -89,10 +120,14 @@ class DocumentClassifier(nn.Module):
             nn.Linear(cf_hidden_dim, model_hparams['num_classes'])
         )
 
-    def forward(self, inputs, attention_mask=None):
+    # needs to be there to catch additional parameter modeL
+    # noinspection PyUnusedLocal
+    def forward(self, batch, **kwargs):
+        inputs, attention_mask = batch['input_ids'], batch['attention_mask']
+
         out = self.encoder(inputs, attention_mask)
         out = self.classifier(out)
-        return out
+        return out, batch['labels']
 
 
 class TransformerModel(nn.Module):
@@ -122,9 +157,10 @@ class TransformerModel(nn.Module):
 
         return cls_token_state
 
-class GraphNet(torch.nn.Module):
+
+class GraphNetPure(torch.nn.Module):
     def __init__(self):
-        super(GraphNet, self).__init__()
+        super(GraphNetPure, self).__init__()
         self.linlay = nn.Linear(300, 768)
         self.conv1 = GCNConv(768, 200)
         self.conv2 = GCNConv(200, 8)
@@ -141,51 +177,70 @@ class GraphNet(torch.nn.Module):
         x = self.conv2(x, edge_index, edge_weight)
         return x
 
-class GraphModel(pl.LightningModule):
-    def __init__(self, num_nodes, optimizer_hparams):
+class GraphNetRoberta(torch.nn.Module):
+    def __init__(self):
+        super(GraphNetRoberta, self).__init__()
+        self.hidden_size = 100
+        self.linlay = nn.Linear(300, 768)
+        self.conv1 = GCNConv(768, 200)
+        self.conv2 = GCNConv(200, self.hidden_size)
+
+    def forward(self, data, device):
+        edge_index, edge_weight = data.edge_index, data.edge_attr
+        doc_feats = data.doc_features
+        word_feats = data.word_features
+        word_feats = self.linlay(word_feats)
+        x = torch.cat((doc_feats, word_feats))
+        x = self.conv1(x, edge_index, edge_weight)
+        x = F.relu(x)
+        x = F.dropout(x, training=self.training)
+        x = self.conv2(x, edge_index, edge_weight)
+        return x
+
+
+class GraphClassifier(nn.Module):
+    def __init__(self, model_hparams, model_name):
         super().__init__()
-        self.devc = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-        self.model = GraphNet().to(self.devc)
+        if model_name == 'pure_gnn':
+            self.model = GraphNetPure()
+        elif model_name == 'roberta_gnn':
+            self.model = GraphNetRoberta()
+        
+        cf_hidden_dim = model_hparams['cf_hid_dim']
+        self.classifier = nn.Sequential(
+            # nn.Dropout(model_hparams['dropout']),     # TODO: maybe add later
+            nn.Linear(self.model.hidden_size, cf_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(cf_hidden_dim, model_hparams['num_classes'])
+        )
         self.test_val_mode = 'test'
-        self.save_hyperparameters()
-    
+
     def forward(self, data, mode):
-        out = self.model(data, self.devc)
-        if mode=='train':
+        out = self.model(data)
+        out = self.classifier(out)
+
+        if mode == 'train':
             mask = data.train_mask
-        elif mode=='val':
+        elif mode == 'val':
             mask = data.val_mask
-        elif mode=='test':
+        elif mode == 'test':
             mask = data.test_mask
-        loss = F.cross_entropy(out[mask], data.y[mask])
-        class_predictions = torch.argmax(out, dim=1)
-        if mode=='val':
-            print('preds:', class_predictions[:20])
-            print('real:', data.y[:20])
-        correct = (class_predictions[mask] == data.y[mask]).sum().item()
-        accuracy = correct / mask.sum()
-        return loss, accuracy
+        else:
+            raise ValueError("Mode '%s' is not supported in forward of graph classifier." % mode)
+        # loss = F.cross_entropy(out[mask], data.y[mask])
+        # class_predictions = torch.argmax(out, dim=1)[mask]
+        return out[mask], data.y[mask]
     
-    def backward(self, loss, optimizer, optimizer_idx):
-        #override of the backward pass so we can set retain_graph to True
-        loss.backward(retain_graph=True)
+    # def backward(self, loss, optimizer, optimizer_idx):
+    #     #override of the backward pass so we can set retain_graph to True
+    #     loss.backward(retain_graph=True)
     
-    def configure_optimizers(self):
-        self.optimizer = AdamW(self.parameters(), **self.hparams.optimizer_hparams)
-        return self.optimizer
+    # def configure_optimizers(self):
+    #     self.optimizer = AdamW(self.parameters(), **self.hparams.optimizer_hparams)
+    #     return self.optimizer
 
-    def training_step(self, batch, batch_idx):
-        loss, acc = self.forward(batch, mode='train')
-        self.log("train_loss", loss, on_step=False, on_epoch=True)
-        self.log("train_accuracy", acc, on_step=False, on_epoch=True)
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        loss, acc = self.forward(batch, mode='val')
-        # self.log("val_loss", loss)
-        self.log("val_accuracy", acc)
-
-    def test_step(self, batch, batch_idx):
-        loss, acc = self.forward(batch, mode=self.test_val_mode)
-        # self.log("test_loss", loss)
-        self.log("test_accuracy", acc)
+    # def training_step(self, batch, batch_idx):
+    #     loss, acc = self.forward(batch, mode='train')
+    #     self.log("train_loss", loss, on_step=False, on_epoch=True)
+    #     self.log("train_accuracy", acc, on_step=False, on_epoch=True)
+    #     return loss

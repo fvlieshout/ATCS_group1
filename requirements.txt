@@ -1,16 +1,18 @@
 # required
-torch==1.7.1
+# torch==1.7.1+cu101 -f https://download.pytorch.org/whl/torch_stable.html
 torchtext==0.8.0
 pytorch-lightning==1.0.3
 
-torch-scatter -f https://pytorch-geometric.com/whl/torch-1.7.1+cu102.html
-torch-sparse -f https://pytorch-geometric.com/whl/torch-1.7.1+cu102.html
-torch-cluster -f https://pytorch-geometric.com/whl/torch-1.7.1+cu102.html
-torch-spline-conv -f https://pytorch-geometric.com/whl/torch-1.7.1+cu102.html
-torch-geometric
+#torch-scatter -f https://pytorch-geometric.com/whl/torch-1.7.0+cu101.html
+#torch-sparse -f https://pytorch-geometric.com/whl/torch-1.7.0+cu101.html
+#torch-cluster -f https://pytorch-geometric.com/whl/torch-1.7.0+cu101.html
+#torch-spline-conv -f https://pytorch-geometric.com/whl/torch-1.7.0+cu101.html
+#torch-geometric
 
 numpy==1.19.2
-tqdm==4.50.2
+matplotlib==3.4.2
+datasets==1.6.2
+tqdm==4.49.0    # this version because required by datasets
 nltk
 sklearn
 
