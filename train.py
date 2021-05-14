@@ -9,7 +9,7 @@ import torch_geometric.data as geom_data
 from data_prep.agnews_text import AGNewsText
 from data_prep.reuters_graph import R8Graph, R52Graph
 from data_prep.reuters_text import R8Text, R52Text
-from models.model import ClassifierModule
+from models.model import DocumentClassifier
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
@@ -48,10 +48,11 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
     model_params = {
         'model': model_name,
         'cf_hid_dim': cf_hidden_dim,
+        'gnn_output_dim': gnn_output_dim, #TODO get the pure_gnn_output dim somehwere
         **additional_params
     }
 
-    model = ClassifierModule(model_params, optimizer_hparams)
+    model = DocumentClassifier(model_params, optimizer_hparams)
     trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, dataset_name)
 
     # Training

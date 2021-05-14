@@ -9,7 +9,7 @@ from torch_geometric.nn import GCNConv
 from transformers import RobertaModel
 
 
-class ClassifierModule(pl.LightningModule):
+class DocumentClassifier(pl.LightningModule):
 
     # noinspection PyUnusedLocal
     def __init__(self, model_hparams, optimizer_hparams):
@@ -20,20 +20,33 @@ class ClassifierModule(pl.LightningModule):
             weight decay, etc.
         """
         super().__init__()
+        # Variable to distinguish between validation and test mask in test_step
+        self.test_val_mode = 'test'
 
         # Exports the hyperparameters to a YAML file, and create "self.hparams" namespace
         self.save_hyperparameters()
-
         self.loss_module = nn.CrossEntropyLoss()
+
+        roberta_output_dim = 768
+        pure_gnn_output_dim = model_hparams['gnn_output_dim']
+        cf_hidden_dim = model_hparams['cf_hid_dim']
 
         model_name = model_hparams['model']
         if model_name == 'roberta':
-            self.model = TransformerClassifier(model_hparams)
+            self.model = RobertaEncoder()
         elif model_name == 'pure-gnn':
-            self.model = GraphClassifier(model_hparams)
+            self.model = GraphEncoder(pure_gnn_output_dim, roberta_output_dim)
+        elif model_name == 'roberta_gnn':
+            self.model = GraphEncoder(roberta_output_dim, roberta_output_dim)
         else:
             raise ValueError("Model type '%s' is not supported." % model_name)
-
+        
+        self.classifier = nn.Sequential(
+            # nn.Dropout(model_hparams['dropout']),     # TODO: maybe add later
+            nn.Linear(roberta_output_dim, cf_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(cf_hidden_dim, model_hparams['num_classes'])
+        )
         self.lr_scheduler = None
 
     def configure_optimizers(self):
@@ -56,7 +69,8 @@ class ClassifierModule(pl.LightningModule):
             batch_idx     - Index of the batch in the dataset (not needed here).
         """
         # "batch" is the output of the training data loader
-        predictions, labels = self.model(batch, mode='train')
+        out, labels = self.model(batch, mode='train')
+        predictions = self.classifier(out)
         loss = self.loss_module(predictions, labels)
 
         self.log('train_accuracy', self.accuracy(predictions, labels).item(), on_step=False, on_epoch=True)
@@ -64,16 +78,22 @@ class ClassifierModule(pl.LightningModule):
 
         # logging in optimizer step does not work, therefore here
         self.log('lr_rate', self.lr_scheduler.get_lr()[0])
-
         return loss
 
     def validation_step(self, batch, batch_idx):
         # By default logs it per epoch (weighted average over batches)
-        self.log('val_accuracy', self.accuracy(*self.model(batch, mode='val')))
+        out, labels = self.model(batch, mode='val')
+        predictions = self.classifier(out)
+        self.log('val_accuracy', self.accuracy(predictions, labels))
 
     def test_step(self, batch, batch_idx):
         # By default logs it per epoch (weighted average over batches)
-        self.log('test_accuracy', self.accuracy(*self.model(batch, mode='test')))
+        if self.test_val_mode == 'test':
+            out, labels = self.model(batch, mode='test')
+        if self.test_val_mode == 'val':
+            out, labels = self.model(batch, mode='val')
+        predictions = self.classifier(out)
+        self.log('test_accuracy', self.accuracy(predictions, labels))
 
     @staticmethod
     def accuracy(predictions, labels):
@@ -100,46 +120,12 @@ class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
         return lr_factor
 
 
-class TransformerClassifier(nn.Module):
-
-    def __init__(self, model_hparams):
-        super().__init__()
-
-        model = model_hparams['model']
-        if model == 'roberta':
-            self.encoder = TransformerModel()
-        else:
-            raise ValueError("Transformer type '%s' is not supported." % model)
-
-        cf_hidden_dim = model_hparams['cf_hid_dim']
-
-        self.classifier = nn.Sequential(
-            # nn.Dropout(model_hparams['dropout']),     # TODO: maybe add later
-            nn.Linear(self.encoder.hidden_size, cf_hidden_dim),
-            nn.ReLU(),
-            nn.Linear(cf_hidden_dim, model_hparams['num_classes'])
-        )
-
-    # needs to be there to catch additional parameter modeL
-    # noinspection PyUnusedLocal
-    def forward(self, batch, **kwargs):
-        inputs, attention_mask = batch['input_ids'], batch['attention_mask']
-
-        out = self.encoder(inputs, attention_mask)
-        out = self.classifier(out)
-        return out, batch['labels']
-
-
-class TransformerModel(nn.Module):
-
+class RobertaEncoder(nn.Module):
     def __init__(self):
         super().__init__()
 
         # transformer_config = model_hparams['transformer_config']
         self.model = RobertaModel.from_pretrained('roberta-base')
-
-        # this is fixed for all base models
-        self.hidden_size = 768
 
         # this model is in eval per default, we want to fine-tune it but only the top layers
         self.model.train()
@@ -148,41 +134,28 @@ class TransformerModel(nn.Module):
         for param in self.model.base_model.parameters():
             param.requires_grad = False
 
-    def forward(self, inputs, attention_mask=None):
+    def forward(self, batch):
+        inputs, attention_mask = batch['input_ids'], batch['attention_mask']
         # returns a tuple of torch.FloatTensor comprising various elements depending on the (RobertaConfig) and inputs.
         hidden_states = self.model(inputs, attention_mask)
 
         # b_size x hid_size
-        cls_token_state = hidden_states[1]
+        out = hidden_states[1]
+        return out, batch['labels']
 
-        return cls_token_state
+class GraphEncoder(nn.Module):
+    def __init__(self, input_dim, hidden_dim):
+        super(GraphEncoder, self).__init__()
+        self.conv1 = GCNConv(hidden_dim, hidden_dim)
+        self.conv2 = GCNConv(hidden_dim, hidden_dim)
 
-
-class GraphNet(torch.nn.Module):
-    def __init__(self, num_nodes):
-        super(GraphNet, self).__init__()
-        self.conv1 = GCNConv(num_nodes, 200)
-        self.conv2 = GCNConv(200, 8)
-
-    def forward(self, data):
+    def forward(self, data, mode):
+        #the batch is a Data object here
         x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
         x = self.conv1(x, edge_index, edge_weight)
         x = F.relu(x)
         x = F.dropout(x, training=self.training)
         x = self.conv2(x, edge_index, edge_weight)
-        return x
-
-
-class GraphClassifier(nn.Module):
-    def __init__(self, model_hparams):
-        super().__init__()
-
-        self.model = GraphNet(model_hparams['num_nodes'])
-        self.test_val_mode = 'test'
-
-    def forward(self, data, mode):
-        out = self.model(data)
-
         if mode == 'train':
             mask = data.train_mask
         elif mode == 'val':
@@ -192,7 +165,6 @@ class GraphClassifier(nn.Module):
         else:
             raise ValueError("Mode '%s' is not supported in forward of graph classifier." % mode)
 
-        predictions = out[mask]
-        targets = data.y[mask]
+        x = x[mask]
+        return x, data.y[mask]
 
-        return predictions, targets
