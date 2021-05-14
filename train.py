@@ -52,7 +52,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
     }
 
     model = ClassifierModule(model_params, optimizer_hparams)
-    trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup)
+    trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, dataset_name)
 
     # Training
     print('Fitting model ..........\n')
@@ -135,12 +135,12 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
     return test_accuracy, val_accuracy
 
 
-def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmup):
+def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmup, seed, dataset):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
     os.makedirs(LOG_PATH, exist_ok=True)
 
-    version_str = f'patience={patience}_lr={l_rate}_wdec={weight_decay}_wsteps={warmup}'
+    version_str = f'dname={dataset}_seed={seed}_lr={l_rate}_wdec={weight_decay}_wsteps={warmup}'
     logger = TensorBoardLogger(LOG_PATH, name=model_name, version=version_str)
 
     early_stop_callback = EarlyStopping(
@@ -188,11 +188,10 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', dest='epochs', type=int, default=50)
     parser.add_argument('--patience', dest='patience', type=int, default=10)
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
-    parser.add_argument('--lr', dest='l_rate', type=float, default=1e-4)
-    parser.add_argument("--min-lr", dest='minimum_lr', type=float, default=1e-5, help="Minimum Learning Rate")
-    parser.add_argument("--w-decay", dest='w_decay', type=float, default=1e-3,
+    parser.add_argument('--lr', dest='l_rate', type=float, default=5e-3)
+    parser.add_argument("--w-decay", dest='w_decay', type=float, default=2e-3,
                         help="Weight decay for L2 regularization of optimizer AdamW")
-    parser.add_argument("--warmup", dest='warmup', type=int, default=100,
+    parser.add_argument("--warmup", dest='warmup', type=int, default=500,
                         help="Number of steps for which we do learning rate warmup.")
     parser.add_argument("--max-iters", dest='max_iters', type=int, default=2000,
                         help="Max iterations for learning rate warmup.")
