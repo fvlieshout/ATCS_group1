@@ -1,9 +1,10 @@
 import abc
 
 from data_prep.dataset import Dataset
+from torch_geometric.data import Dataset as GeometricDataset
 
 
-class GraphDataset(Dataset):
+class GraphDataset(Dataset, GeometricDataset):
     """
     Parent class for graph datasets.
     Require to implement a preprocess and generate_features methods.
@@ -71,3 +72,8 @@ class GraphDataset(Dataset):
         """
         raise NotImplementedError
 
+    def len(self):
+        return 1
+
+    def get(self, idx):
+        return self.data
