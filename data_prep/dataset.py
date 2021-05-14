@@ -7,6 +7,8 @@ import torch.utils.data as data
 from data_prep.graph_utils import tf_idf_mtx, get_PMI
 from nltk.corpus import reuters
 from torch_geometric.data import Data
+from transformers import RobertaModel
+import torchtext.vocab as vocab
 
 
 class Dataset(data.Dataset, metaclass=abc.ABCMeta):
@@ -55,28 +57,30 @@ class GraphDataset(Dataset):
         self.loti = None
         self.data = None
         self.n_words = None
+        self.words = None
+        self.all_docs = None
 
     def initialize_data(self, docs, classes):
         train_docs, test_docs, val_docs = docs
-        all_docs = train_docs + test_docs + val_docs
+        self.all_docs = train_docs + test_docs + val_docs
 
-        corpus = self.pre_process_words(all_docs)
+        corpus = self.pre_process_words(self.all_docs)
 
         print('Compute tf.idf')
-        tf_idf, words = tf_idf_mtx(corpus)
-        self.n_words = len(words)
+        tf_idf, self.words = tf_idf_mtx(corpus)
+        self.n_words = len(self.words)
 
         print('Compute PMI scores')
         pmi_score = get_PMI(corpus)
 
         # Index to node name mapping
-        self.iton = list(all_docs + words)
+        self.iton = list(self.all_docs + self.words)
         # Node name to index mapping
         self.ntoi = {self.iton[i]: i for i in range(len(self.iton))}
 
         # Edge index and values for dataset
         print('Generate edges')
-        edge_index, edge_attr = self.generate_edges(len(all_docs), tf_idf, pmi_score)
+        edge_index, edge_attr = self.generate_edges(len(self.all_docs), tf_idf, pmi_score)
 
         # Index to label mapping
         self.itol = classes
@@ -179,6 +183,42 @@ class GraphDataset(Dataset):
         """
         raise NotImplementedError
 
+class RobertaGraphDataset(GraphDataset):
+    def __init__(self, device, n_train_docs, tokenizer):
+        super().__init__(device, n_train_docs)
+        self.tokenizer = tokenizer
+        self.word_embeddings = vocab.GloVe(name='840B', dim=300)
+        self.doc_embeddings = RobertaModel.from_pretrained('roberta-base')
+        self.doc_embeddings.eval()
+    
+    def initialize_data(self, docs, classes):
+        super().initialize_data(docs, classes)
+        self.data.doc_features, self.data.word_features = self.generate_features(self.words)
+    
+    def generate_features(self, words):
+        print('Generating feature matrix')
+        features_docs = []
+        features_words = []
+        # unk_embedding = torch.zeros((1, 300))
+
+        for doc_id in self.all_docs:
+            document = reuters.raw(doc_id)
+            # encodings = tokenizer.encode(sentence, return_tensors='pt')
+            # encodings = tokenizer(doc_words, truncation=True, padding=False)
+            encodings = self.tokenizer([document], truncation=True, padding=False)['input_ids']
+            encodings = torch.tensor(encodings, dtype=torch.long)
+            # doc_tensor = encodings.convert_to_tensors
+            embed_doc = self.doc_embeddings(encodings)[1]
+            features_docs.append(embed_doc)
+        features_docs = torch.squeeze(torch.stack(features_docs))
+        # features_docs.requires_grad = False
+        
+        for word in words:
+            embedded_word = self.word_embeddings[word]
+            features_words.append(embedded_word)
+        features_words = torch.stack(features_words)
+        # features_words.requires_grad = False
+        return features_docs, features_words
 
 class Reuters(Dataset):
     """

@@ -23,7 +23,7 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 LOG_PATH = "./logs/"
 
-SUPPORTED_MODELS = ['roberta', 'pure-gnn']
+SUPPORTED_MODELS = ['roberta', 'pure_gnn', 'roberta_gnn']
 SUPPORTED_DATASETS = ['R8Text', 'R52Text', 'R8Graph', 'R52Graph', 'AGNewsText', 'AGNewsGraph']
 
 
@@ -48,7 +48,8 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
     model_params = {
         'model': model_name,
         'cf_hid_dim': cf_hidden_dim,
-        'gnn_output_dim': gnn_output_dim, #TODO get the pure_gnn_output dim somehwere
+        'gnn_output_dim': additional_params.get('gnn_output_dim'),
+        'num_classes': additional_params['num_classes'],
         **additional_params
     }
 
@@ -91,12 +92,18 @@ def get_dataloaders(model, b_size, dataset_name):
         test_dataloader = text_dataloader(test_dataset, b_size)
         val_dataloader = text_dataloader(val_dataset, b_size)
 
-    elif model == 'pure-gnn':
+    elif model == 'pure_gnn':
         train_dataloader = geom_data.DataLoader(dataset, batch_size=1)
         val_dataloader = geom_data.DataLoader(dataset, batch_size=1)
         test_dataloader = geom_data.DataLoader(dataset, batch_size=1)
+        additional_params['num_classes'] = dataset.num_classes
+        additional_params['gnn_output_dim'] = len(dataset.iton)
 
-        additional_params['num_nodes'] = len(dataset.iton)
+    elif model == 'roberta_gnn':
+        train_dataloader = geom_data.DataLoader(dataset, batch_size=1)
+        val_dataloader = geom_data.DataLoader(dataset, batch_size=1)
+        test_dataloader = geom_data.DataLoader(dataset, batch_size=1)
+        additional_params['num_classes'] = dataset.num_classes
     else:
         raise ValueError("Model type '%s' is not supported." % model)
 
@@ -174,7 +181,8 @@ def get_dataset(dataset_name):
     elif dataset_name == "AGNewsText":
         return AGNewsText
     elif dataset_name == 'R8Graph':
-        return R8Graph(device)
+        tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
+        return R8Graph(device, n_train_docs=10, tokenizer=tokenizer)
     elif dataset_name == 'R52Graph':
         return R52Graph(device)
     else:
@@ -201,7 +209,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--dataset', dest='dataset', default='R8Graph', choices=SUPPORTED_DATASETS,
                         help='Select the dataset you want to use.')
-    parser.add_argument('--model', dest='model', default='pure-gnn', choices=SUPPORTED_MODELS,
+    parser.add_argument('--model', dest='model', default='roberta_gnn', choices=SUPPORTED_MODELS,
                         help='Select the model you want to use.')
     parser.add_argument('--seed', dest='seed', type=int, default=1234)
     parser.add_argument('--cf-hidden-dim', dest='cf_hidden_dim', type=int, default=512)

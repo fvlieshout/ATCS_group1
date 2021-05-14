@@ -35,9 +35,9 @@ class DocumentClassifier(pl.LightningModule):
         if model_name == 'roberta':
             self.model = RobertaEncoder()
         elif model_name == 'pure_gnn':
-            self.model = GraphEncoder(pure_gnn_output_dim, roberta_output_dim)
+            self.model = PureGraphEncoder(pure_gnn_output_dim, roberta_output_dim)
         elif model_name == 'roberta_gnn':
-            self.model = GraphEncoder(roberta_output_dim, roberta_output_dim)
+            self.model = RobertaGraphEncoder(roberta_output_dim, roberta_output_dim)
         else:
             raise ValueError("Model type '%s' is not supported." % model_name)
         
@@ -94,6 +94,10 @@ class DocumentClassifier(pl.LightningModule):
             out, labels = self.model(batch, mode='val')
         predictions = self.classifier(out)
         self.log('test_accuracy', self.accuracy(predictions, labels))
+    
+    def backward(self, loss, optimizer, optimizer_idx):
+        #override of the backward pass so we can set retain_graph to True
+        loss.backward(retain_graph=True)
 
     @staticmethod
     def accuracy(predictions, labels):
@@ -143,15 +147,19 @@ class RobertaEncoder(nn.Module):
         out = hidden_states[1]
         return out, batch['labels']
 
-class GraphEncoder(nn.Module):
+class PureGraphEncoder(nn.Module):
     def __init__(self, input_dim, hidden_dim):
-        super(GraphEncoder, self).__init__()
-        self.conv1 = GCNConv(hidden_dim, hidden_dim)
+        super(PureGraphEncoder, self).__init__()
+        self.conv1 = GCNConv(input_dim, hidden_dim)
         self.conv2 = GCNConv(hidden_dim, hidden_dim)
 
     def forward(self, data, mode):
-        #the batch is a Data object here
         x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
+        edge_index, edge_weight = data.edge_index, data.edge_attr
+        doc_feats = data.doc_features
+        word_feats = data.word_features
+        word_feats = self.linlay(word_feats)
+        x = torch.cat((doc_feats, word_feats))
         x = self.conv1(x, edge_index, edge_weight)
         x = F.relu(x)
         x = F.dropout(x, training=self.training)
@@ -168,3 +176,32 @@ class GraphEncoder(nn.Module):
         x = x[mask]
         return x, data.y[mask]
 
+class RobertaGraphEncoder(nn.Module):
+    def __init__(self, input_dim, hidden_dim):
+        super(RobertaGraphEncoder, self).__init__()
+        self.linlay = nn.Linear(300, 768)
+        self.conv1 = GCNConv(input_dim, hidden_dim)
+        self.conv2 = GCNConv(hidden_dim, hidden_dim)
+
+    def forward(self, data, mode):
+        #the batch is a Data object here
+        edge_index, edge_weight = data.edge_index, data.edge_attr
+        doc_feats = data.doc_features
+        word_feats = data.word_features
+        word_feats = self.linlay(word_feats)
+        x = torch.cat((doc_feats, word_feats))
+        x = self.conv1(x, edge_index, edge_weight)
+        x = F.relu(x)
+        x = F.dropout(x, training=self.training)
+        x = self.conv2(x, edge_index, edge_weight)
+        if mode == 'train':
+            mask = data.train_mask
+        elif mode == 'val':
+            mask = data.val_mask
+        elif mode == 'test':
+            mask = data.test_mask
+        else:
+            raise ValueError("Mode '%s' is not supported in forward of graph classifier." % mode)
+
+        x = x[mask]
+        return x, data.y[mask]
