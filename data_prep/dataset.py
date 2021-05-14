@@ -8,6 +8,7 @@ from data_prep.graph_utils import tf_idf_mtx, get_PMI
 from nltk.corpus import reuters
 from datasets import load_dataset
 from torch_geometric.data import Data
+from nltk.tokenize.regexp import WordPunctTokenizer
 
 
 class Dataset(data.Dataset, metaclass=abc.ABCMeta):
@@ -309,11 +310,6 @@ class HuggingFaceDatasetText(TextDataset):
     
     def __len__(self):
         return len(self.labels)
-
-
-from datasets import load_dataset
-from nltk.tokenize.regexp import WordPunctTokenizer
-
 
 class HuggingFaceGraph(GraphDataset):
     """
