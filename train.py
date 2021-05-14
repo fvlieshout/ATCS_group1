@@ -182,9 +182,9 @@ def get_dataset(dataset_name):
     elif dataset_name == 'R52Graph':
         return R52Graph(device)
     elif dataset_name == 'AGNewsGraph':
-        return AGNewsGraph(device, n_train_docs=100)
+        return AGNewsGraph(device)
     elif dataset_name == 'IMDbGraph':
-        return IMDbGraph(device, n_train_docs=100)
+        return IMDbGraph(device)
     else:
         raise ValueError("Dataset '%s' is not supported." % dataset_name)
 
