@@ -1,4 +1,5 @@
 import argparse
+from data_prep.agnews_graph import AGNewsGraph
 import os
 import time
 
@@ -10,6 +11,7 @@ from data_prep.agnews_text import AGNewsText
 from data_prep.reuters_graph import R8Graph, R52Graph
 from data_prep.reuters_text import R8Text, R52Text
 from data_prep.imdb_text import IMDbText
+from data_prep.imdb_graph import IMDbGraph
 from models.model import ClassifierModule
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -25,7 +27,7 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 LOG_PATH = "./logs/"
 
 SUPPORTED_MODELS = ['roberta', 'pure-gnn']
-SUPPORTED_DATASETS = ['R8Text', 'R52Text', 'R8Graph', 'R52Graph', 'AGNewsText', 'AGNewsGraph', 'IMDbText']
+SUPPORTED_DATASETS = ['R8Text', 'R52Text', 'R8Graph', 'R52Graph', 'AGNewsText', 'AGNewsGraph', 'IMDbText', 'IMDbGraph']
 
 
 def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, dataset_name):
@@ -179,6 +181,10 @@ def get_dataset(dataset_name):
         return R8Graph(device)
     elif dataset_name == 'R52Graph':
         return R52Graph(device)
+    elif dataset_name == 'AGNewsGraph':
+        return AGNewsGraph(device, n_train_docs=100)
+    elif dataset_name == 'IMDbGraph':
+        return IMDbGraph(device, n_train_docs=100)
     else:
         raise ValueError("Dataset '%s' is not supported." % dataset_name)
 
