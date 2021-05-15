@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
 import torch
 import torch_geometric.data as geom_data
-# from data_prep.agnews_text import AGNewsText
+from data_prep.agnews_text import AGNewsText
 from data_prep.reuters_graph import R8Graph, R52Graph
 from data_prep.reuters_text import R8Text, R52Text
 from models.model import DocumentClassifier
