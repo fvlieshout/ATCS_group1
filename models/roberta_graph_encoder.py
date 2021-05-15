@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from roberta_graph_encoder import PureGraphEncoder
+from models.pure_graph_encoder import PureGraphEncoder
 from torch import nn
 from torch_geometric.nn import GCNConv
 
