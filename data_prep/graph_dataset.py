@@ -28,7 +28,7 @@ class GraphDataset(Dataset, GeometricDataset):
         all_docs = ['doc.{}'.format(i) for i in range(len(self._raw_texts))]
 
         print('Preprocess corpus')
-        tokenized_text, self._tokens = self._preprocess(self._raw_texts)
+        tokenized_text, self._tokens = self._preprocess()
 
         iton = list(all_docs + self._tokens)
         ntoi = {iton[i]: i for i in range(len(iton))}
@@ -63,13 +63,10 @@ class GraphDataset(Dataset, GeometricDataset):
         """
         return self._num_classes
 
-    def labels(self, doc_labels, all_num):
+    def labels(self):
         """
         Return the labels of datapoints.
 
-        Args:
-            doc_labels (List): List of document labels.
-            all_num (int): Number of all nodes, including words
         Returns:
             labels (Tensor): Document and word labels
         """
