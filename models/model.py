@@ -152,11 +152,6 @@ class PureGraphEncoder(nn.Module):
 
     def forward(self, data, mode):
         x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
-        edge_index, edge_weight = data.edge_index, data.edge_attr
-        doc_feats = data.doc_features
-        word_feats = data.word_features
-        word_feats = self.linlay(word_feats)
-        x = torch.cat((doc_feats, word_feats))
         x = self.conv1(x, edge_index, edge_weight)
         x = F.relu(x)
         x = F.dropout(x, training=self.training)
@@ -176,7 +171,7 @@ class PureGraphEncoder(nn.Module):
 class RobertaGraphEncoder(nn.Module):
     def __init__(self, input_dim, hidden_dim):
         super(RobertaGraphEncoder, self).__init__()
-        self.linlay = nn.Linear(300, 768)
+        self.linlay = nn.Linear(300, input_dim)
         self.conv1 = GCNConv(input_dim, hidden_dim)
         self.conv2 = GCNConv(hidden_dim, hidden_dim)
 
