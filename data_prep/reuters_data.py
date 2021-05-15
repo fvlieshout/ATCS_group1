@@ -77,7 +77,7 @@ class ReutersData(Data):
         texts = []
         labels = []
         for doc in docs:
-            text = ' '.join(reuters.words(doc))
+            text = reuters.raw(doc)
             clz = reuters.categories(doc)[0]
             texts.append(text)
             labels.append(classes.index(clz))
