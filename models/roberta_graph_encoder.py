@@ -15,5 +15,5 @@ class RobertaGraphEncoder(PureGraphEncoder):
         doc_feats = data.doc_features
         word_feats = data.word_features
         word_feats = self.linlay(word_feats)
-        x = torch.cat((doc_feats, word_feats))
-        return super.forward(x, mode)
+        data.x = torch.cat((doc_feats, word_feats))
+        return super(RobertaGraphEncoder, self).forward(data, mode)
