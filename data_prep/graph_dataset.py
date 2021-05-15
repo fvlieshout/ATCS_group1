@@ -14,6 +14,7 @@ class GraphDataset(Dataset, GeometricDataset):
     Parent class for graph datasets.
     Require to implement a preprocess and generate_features methods.
     """
+
     def __init__(self, corpus, device):
         self._device = device
         self._tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
@@ -43,8 +44,8 @@ class GraphDataset(Dataset, GeometricDataset):
         edge_index, edge_attr = self._generate_edges(tf_idf, tf_idf_words, pmi_score, ntoi)
 
         print('Generate masks')
-        train_mask, val_mask, test_mask = self._generate_masks(len(train_texts), len(train_texts),
-                                                              len(train_texts), len(iton))
+        train_mask, val_mask, test_mask = self._generate_masks(len(train_texts), len(val_texts),
+                                                               len(test_texts), len(iton))
 
         doc_labels = train_labels + val_labels + test_labels
         self._labels = torch.zeros(len(iton), device=self._device) - 1

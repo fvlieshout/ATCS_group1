@@ -7,6 +7,7 @@ class PureGraphDataset(GraphDataset):
     """
     Text Dataset used by the pure graph model.
     """
+
     def __init__(self, corpus, device):
         super().__init__(corpus, device)
         print('Generating feature matrix')
