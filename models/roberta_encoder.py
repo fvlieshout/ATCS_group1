@@ -1,5 +1,6 @@
-from transformers import RobertaModel
 from torch import nn
+from transformers import RobertaModel
+
 
 class RobertaEncoder(nn.Module):
     def __init__(self):

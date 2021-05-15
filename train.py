@@ -90,18 +90,13 @@ def get_dataloaders(model, b_size, dataset_name):
         test_dataloader = text_dataloader(test_dataset, b_size)
         val_dataloader = text_dataloader(val_dataset, b_size)
 
-    elif model == 'pure_gnn':
+    elif model == 'pure_gnn' or model == 'roberta_gnn':
         train_dataloader = geom_data.DataLoader(dataset, batch_size=1)
         val_dataloader = geom_data.DataLoader(dataset, batch_size=1)
         test_dataloader = geom_data.DataLoader(dataset, batch_size=1)
+
         additional_params['num_classes'] = dataset.num_classes
         additional_params['gnn_output_dim'] = len(dataset.iton)
-
-    elif model == 'roberta_gnn':
-        train_dataloader = geom_data.DataLoader(dataset, batch_size=1)
-        val_dataloader = geom_data.DataLoader(dataset, batch_size=1)
-        test_dataloader = geom_data.DataLoader(dataset, batch_size=1)
-        additional_params['num_classes'] = dataset.num_classes
     else:
         raise ValueError("Model type '%s' is not supported." % model)
 

@@ -1,6 +1,7 @@
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 from torch_geometric.nn import GCNConv
+
 
 class PureGraphEncoder(nn.Module):
     def __init__(self, input_dim, hidden_dim):
@@ -23,5 +24,4 @@ class PureGraphEncoder(nn.Module):
         else:
             raise ValueError("Mode '%s' is not supported in forward of graph classifier." % mode)
 
-        x = x[mask]
-        return x, data.y[mask]
+        return x[mask], data.y[mask]

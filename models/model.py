@@ -1,12 +1,12 @@
 import numpy as np
-from numpy.lib.arraysetops import isin
 import pytorch_lightning as pl
+from models.pure_graph_encoder import PureGraphEncoder
+from models.roberta_encoder import RobertaEncoder
+from models.roberta_graph_encoder import RobertaGraphEncoder
+from numpy.lib.arraysetops import isin
 from torch import nn
 from torch import optim
 from torch.optim import AdamW
-from models.roberta_encoder import RobertaEncoder
-from models.pure_graph_encoder import PureGraphEncoder
-from models.roberta_graph_encoder import RobertaGraphEncoder
 
 
 class DocumentClassifier(pl.LightningModule):
@@ -20,6 +20,7 @@ class DocumentClassifier(pl.LightningModule):
             weight decay, etc.
         """
         super().__init__()
+
         # Variable to distinguish between validation and test mask in test_step
         self.test_val_mode = 'test'
 
@@ -28,25 +29,25 @@ class DocumentClassifier(pl.LightningModule):
         self.loss_module = nn.CrossEntropyLoss()
 
         roberta_output_dim = 768
-        pure_gnn_output_dim = model_hparams.get('gnn_output_dim')
-        cf_hidden_dim = model_hparams['cf_hid_dim']
-
         model_name = model_hparams['model']
         if model_name == 'roberta':
             self.model = RobertaEncoder()
         elif model_name == 'pure_gnn':
-            self.model = PureGraphEncoder(pure_gnn_output_dim, roberta_output_dim)
+            self.model = PureGraphEncoder(model_hparams['gnn_output_dim'], roberta_output_dim)
         elif model_name == 'roberta_gnn':
             self.model = RobertaGraphEncoder(roberta_output_dim, roberta_output_dim)
         else:
             raise ValueError("Model type '%s' is not supported." % model_name)
-        
+
+        cf_hidden_dim = model_hparams['cf_hid_dim']
+
         self.classifier = nn.Sequential(
             # nn.Dropout(model_hparams['dropout']),     # TODO: maybe add later
             nn.Linear(roberta_output_dim, cf_hidden_dim),
             nn.ReLU(),
             nn.Linear(cf_hidden_dim, model_hparams['num_classes'])
         )
+
         self.lr_scheduler = None
 
     def configure_optimizers(self):
@@ -91,13 +92,10 @@ class DocumentClassifier(pl.LightningModule):
         out, labels = self.model(batch, mode=self.test_val_mode)
         predictions = self.classifier(out)
         self.log('test_accuracy', self.accuracy(predictions, labels))
-    
+
     def backward(self, loss, optimizer, optimizer_idx):
-        #override of the backward pass so we can set retain_graph to True
-        if isinstance(self.model, RobertaGraphEncoder):
-            loss.backward(retain_graph=True)
-        else:
-            loss.backward()
+        # override backward pass so we can set retain_graph to True; should be true for the roberta graph encoder
+        loss.backward(retain_graph=isinstance(self.model, RobertaGraphEncoder))
 
     @staticmethod
     def accuracy(predictions, labels):
