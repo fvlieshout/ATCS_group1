@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
 import torch
 import torch_geometric.data as geom_data
-from data_prep.agnews_text import AGNewsText
+# from data_prep.agnews_text import AGNewsText
 from data_prep.reuters_graph import R8Graph, R52Graph
 from data_prep.reuters_text import R8Text, R52Text
 from models.model import DocumentClassifier
@@ -48,8 +48,6 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
     model_params = {
         'model': model_name,
         'cf_hid_dim': cf_hidden_dim,
-        'gnn_output_dim': additional_params.get('gnn_output_dim'),
-        'num_classes': additional_params['num_classes'],
         **additional_params
     }
 
@@ -196,8 +194,8 @@ if __name__ == "__main__":
 
     parser.add_argument('--epochs', dest='epochs', type=int, default=50)
     parser.add_argument('--patience', dest='patience', type=int, default=10)
-    parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
-    parser.add_argument('--lr', dest='l_rate', type=float, default=5e-3)
+    parser.add_argument('--batch-size', dest='batch_size', type=int, default=1)
+    parser.add_argument('--lr', dest='l_rate', type=float, default=0.01)
     parser.add_argument("--w-decay", dest='w_decay', type=float, default=2e-3,
                         help="Weight decay for L2 regularization of optimizer AdamW")
     parser.add_argument("--warmup", dest='warmup', type=int, default=500,

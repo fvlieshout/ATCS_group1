@@ -1,12 +1,12 @@
 import numpy as np
+from numpy.lib.arraysetops import isin
 import pytorch_lightning as pl
-import torch
-import torch.nn.functional as F
 from torch import nn
 from torch import optim
 from torch.optim import AdamW
-from torch_geometric.nn import GCNConv
-from transformers import RobertaModel
+from models.roberta_encoder import RobertaEncoder
+from models.pure_graph_encoder import PureGraphEncoder
+from models.roberta_graph_encoder import RobertaGraphEncoder
 
 
 class DocumentClassifier(pl.LightningModule):
@@ -28,7 +28,7 @@ class DocumentClassifier(pl.LightningModule):
         self.loss_module = nn.CrossEntropyLoss()
 
         roberta_output_dim = 768
-        pure_gnn_output_dim = model_hparams['gnn_output_dim']
+        pure_gnn_output_dim = model_hparams.get('gnn_output_dim')
         cf_hidden_dim = model_hparams['cf_hid_dim']
 
         model_name = model_hparams['model']
@@ -94,7 +94,10 @@ class DocumentClassifier(pl.LightningModule):
     
     def backward(self, loss, optimizer, optimizer_idx):
         #override of the backward pass so we can set retain_graph to True
-        loss.backward(retain_graph=True)
+        if isinstance(self.model, RobertaGraphEncoder):
+            loss.backward(retain_graph=True)
+        else:
+            loss.backward()
 
     @staticmethod
     def accuracy(predictions, labels):
@@ -119,81 +122,3 @@ class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
         if epoch <= self.warmup:
             lr_factor *= epoch * 1.0 / self.warmup
         return lr_factor
-
-
-class RobertaEncoder(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-        # transformer_config = model_hparams['transformer_config']
-        self.model = RobertaModel.from_pretrained('roberta-base')
-
-        # this model is in eval per default, we want to fine-tune it but only the top layers
-        self.model.train()
-
-        # only freezing the encoder parameters / weights of the head layers
-        for param in self.model.base_model.parameters():
-            param.requires_grad = False
-
-    def forward(self, batch):
-        inputs, attention_mask = batch['input_ids'], batch['attention_mask']
-        # returns a tuple of torch.FloatTensor comprising various elements depending on the (RobertaConfig) and inputs.
-        hidden_states = self.model(inputs, attention_mask)
-
-        # b_size x hid_size
-        out = hidden_states[1]
-        return out, batch['labels']
-
-class PureGraphEncoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim):
-        super(PureGraphEncoder, self).__init__()
-        self.conv1 = GCNConv(input_dim, hidden_dim)
-        self.conv2 = GCNConv(hidden_dim, hidden_dim)
-
-    def forward(self, data, mode):
-        x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
-        x = self.conv1(x, edge_index, edge_weight)
-        x = F.relu(x)
-        x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index, edge_weight)
-        if mode == 'train':
-            mask = data.train_mask
-        elif mode == 'val':
-            mask = data.val_mask
-        elif mode == 'test':
-            mask = data.test_mask
-        else:
-            raise ValueError("Mode '%s' is not supported in forward of graph classifier." % mode)
-
-        x = x[mask]
-        return x, data.y[mask]
-
-class RobertaGraphEncoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim):
-        super(RobertaGraphEncoder, self).__init__()
-        self.linlay = nn.Linear(300, input_dim)
-        self.conv1 = GCNConv(input_dim, hidden_dim)
-        self.conv2 = GCNConv(hidden_dim, hidden_dim)
-
-    def forward(self, data, mode):
-        #the batch is a Data object here
-        edge_index, edge_weight = data.edge_index, data.edge_attr
-        doc_feats = data.doc_features
-        word_feats = data.word_features
-        word_feats = self.linlay(word_feats)
-        x = torch.cat((doc_feats, word_feats))
-        x = self.conv1(x, edge_index, edge_weight)
-        x = F.relu(x)
-        x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index, edge_weight)
-        if mode == 'train':
-            mask = data.train_mask
-        elif mode == 'val':
-            mask = data.val_mask
-        elif mode == 'test':
-            mask = data.test_mask
-        else:
-            raise ValueError("Mode '%s' is not supported in forward of graph classifier." % mode)
-
-        x = x[mask]
-        return x, data.y[mask]
