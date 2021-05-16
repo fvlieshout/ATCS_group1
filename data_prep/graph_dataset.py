@@ -16,8 +16,7 @@ class GraphDataset(Dataset, GeometricDataset):
     """
 
     def __init__(self, corpus, device):
-        super(Dataset, self).__init__()
-        super(GeometricDataset, self).__init__()
+        super().__init__()
         self._device = device
         self._tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
         self._num_classes = corpus.num_classes
