@@ -14,8 +14,8 @@ class RobertaGraphDataset(GraphDataset):
     Text Dataset used by the Roberta graph model.
     """
 
-    def __init__(self, corpus):
-        super().__init__(corpus)
+    def __init__(self, corpus, device):
+        super().__init__(corpus, device)
         self._data.doc_features, self._data.word_features = self._generate_features()
 
     def _preprocess(self):
@@ -38,6 +38,7 @@ class RobertaGraphDataset(GraphDataset):
             features_docs (Tensor): Tensor of document node embeddings.
             features_words (Tensor): Tensor of token node embeddings.
         """
+        features_docs = []
         features_words = []
         doc_embedder = RobertaModel.from_pretrained('roberta-base').to(self._device)
         token_embedder = GloVe(name='840B', dim=300)
