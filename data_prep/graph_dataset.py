@@ -18,11 +18,11 @@ class GraphDataset(Dataset, GeometricDataset):
     def __init__(self, corpus, device):
         self._device = device
         self._tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
-        self._num_classes = corpus.num_classes()
+        self._num_classes = corpus.num_classes
 
-        train_texts, train_labels = corpus.train_data()
-        val_texts, val_labels = corpus.val_data()
-        test_texts, test_labels = corpus.test_data()
+        train_texts, train_labels = corpus.train_data
+        val_texts, val_labels = corpus.val_data
+        test_texts, test_labels = corpus.test_data
 
         self._raw_texts = train_texts + val_texts + test_texts
         # Hopefully no tokenizer makes a token "doc.i"

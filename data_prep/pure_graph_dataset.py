@@ -30,10 +30,6 @@ class PureGraphDataset(GraphDataset):
         """
         Generates node features.
 
-        Args:
-            tokens (List): List of all tokens in the corpus.
-            raw_texts ([type]): List of raw document texts.
-
         Returns:
             note_feats (Tensor): Tensor of all node embeddings.
         """
