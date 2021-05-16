@@ -26,8 +26,6 @@ class GraphDataset(Dataset, GeometricDataset):
 
         self._raw_texts = train_texts + val_texts + test_texts
 
-        self._raw_texts = self._raw_texts[:150]
-
         # Hopefully no tokenizer makes a token "doc.i"
         all_docs = ['doc.{}'.format(i) for i in range(len(self._raw_texts))]
 
@@ -51,7 +49,6 @@ class GraphDataset(Dataset, GeometricDataset):
         train_mask, val_mask, test_mask = self._generate_masks(len(train_texts), len(val_texts), len(test_texts))
 
         doc_labels = train_labels + val_labels + test_labels
-        doc_labels = doc_labels[:150]
 
         self._labels = torch.full((len(iton),), -1, device=self._device)
         self._labels[:len(doc_labels)] = torch.tensor(doc_labels)
