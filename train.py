@@ -5,15 +5,10 @@ import time
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
 import torch
-import torch_geometric.data as geom_data
-from data_prep.agnews_text import AGNewsText
-from data_prep.reuters_graph import R8Graph, R52Graph
-from data_prep.reuters_text import R8Text, R52Text
+from data_prep.data_utils import get_dataloaders
 from models.model import DocumentClassifier
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
-from torch.utils.data import DataLoader
-from transformers import RobertaTokenizerFast
 
 # disable parallelism for hugging face to avoid deadlocks
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -24,25 +19,25 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 LOG_PATH = "./logs/"
 
 SUPPORTED_MODELS = ['roberta', 'pure_gnn', 'roberta_gnn']
-SUPPORTED_DATASETS = ['R8Text', 'R52Text', 'R8Graph', 'R52Graph', 'AGNewsText', 'AGNewsGraph']
+SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
-def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, dataset_name,
+def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, data_name,
           resume):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if model_name not in SUPPORTED_MODELS:
         raise ValueError("Model type '%s' is not supported." % model_name)
 
-    print(f'Configuration:\n model_name: {model_name}\n max epochs: {epochs}\n patience: {patience}'
-          f'\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n warmup: {warmup}\n weight_decay: {w_decay}\n'
-          f' cf_hidden_dim: {cf_hidden_dim}\n dataset_name: {dataset_name}\n resume checkpoint: {resume}\n')
+    print(f'Configuration:\n model_name: {model_name}\n data: {data_name}\n max epochs: {epochs}\n patience: {patience}'
+          f'\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n warmup: {warmup}\n '
+          f'weight_decay: {w_decay}\n cf_hidden_dim: {cf_hidden_dim}\n resume checkpoint: {resume}\n')
 
     pl.seed_everything(seed)
 
     # the data preprocessing
 
-    train_loader, test_loader, val_loader, additional_params = get_dataloaders(model_name, b_size, dataset_name)
+    train_loader, test_loader, val_loader, additional_params = get_dataloaders(model_name, b_size, data_name)
 
     optimizer_hparams = {"lr": l_rate, "weight_decay": w_decay, "warmup": warmup, "max_iters": max_iters}
 
@@ -52,7 +47,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
         **additional_params
     }
 
-    trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, dataset_name)
+    trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, data_name)
 
     # optionally resume from a checkpoint
     if resume is not None:
@@ -86,37 +81,6 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
     # We want to save the whole model, because we fine-tune anyways!
 
     return test_acc, val_acc
-
-
-def get_dataloaders(model, b_size, dataset_name):
-    dataset = get_dataset(dataset_name)
-    additional_params = {}
-
-    if model == 'roberta':
-        tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
-        train_dataset, test_dataset, val_dataset = dataset.splits(tokenizer, val_size=0.1)
-
-        additional_params['num_classes'] = train_dataset.num_classes
-
-        train_dataloader = text_dataloader(train_dataset, b_size, shuffle=True)
-        test_dataloader = text_dataloader(test_dataset, b_size)
-        val_dataloader = text_dataloader(val_dataset, b_size)
-
-    elif model == 'pure_gnn' or model == 'roberta_gnn':
-        train_dataloader = geom_data.DataLoader(dataset, batch_size=1)
-        val_dataloader = geom_data.DataLoader(dataset, batch_size=1)
-        test_dataloader = geom_data.DataLoader(dataset, batch_size=1)
-
-        additional_params['num_classes'] = dataset.num_classes
-        additional_params['gnn_output_dim'] = len(dataset.iton)
-    else:
-        raise ValueError("Model type '%s' is not supported." % model)
-
-    return train_dataloader, test_dataloader, val_dataloader, additional_params
-
-
-def text_dataloader(dataset, b_size, shuffle=False):
-    return DataLoader(dataset, batch_size=b_size, num_workers=24, shuffle=shuffle, collate_fn=dataset.get_collate_fn())
 
 
 def evaluate(trainer, model, test_dataloader, val_dataloader):
@@ -177,23 +141,6 @@ def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmu
     return trainer
 
 
-def get_dataset(dataset_name):
-    device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-    if dataset_name == "R8Text":
-        return R8Text
-    elif dataset_name == "R52Text":
-        return R52Text
-    elif dataset_name == "AGNewsText":
-        return AGNewsText
-    elif dataset_name == 'R8Graph':
-        tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
-        return R8Graph(device, n_train_docs=10, tokenizer=tokenizer)
-    elif dataset_name == 'R52Graph':
-        return R52Graph(device)
-    else:
-        raise ValueError("Dataset '%s' is not supported." % dataset_name)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
@@ -212,7 +159,7 @@ if __name__ == "__main__":
 
     # CONFIGURATION
 
-    parser.add_argument('--dataset', dest='dataset', default='R8Graph', choices=SUPPORTED_DATASETS,
+    parser.add_argument('--dataset', dest='dataset', default='R8', choices=SUPPORTED_DATASETS,
                         help='Select the dataset you want to use.')
     parser.add_argument('--model', dest='model', default='roberta_gnn', choices=SUPPORTED_MODELS,
                         help='Select the model you want to use.')
@@ -234,6 +181,6 @@ if __name__ == "__main__":
         warmup=params["warmup"],
         max_iters=params["max_iters"],
         cf_hidden_dim=params["cf_hidden_dim"],
-        dataset_name=params["dataset"],
+        data_name=params["dataset"],
         resume=params["resume"]
     )

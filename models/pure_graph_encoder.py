@@ -15,6 +15,7 @@ class PureGraphEncoder(nn.Module):
         x = F.relu(x)
         x = F.dropout(x, training=self.training)
         x = self.conv2(x, edge_index, edge_weight)
+
         if mode == 'train':
             mask = data.train_mask
         elif mode == 'val':
