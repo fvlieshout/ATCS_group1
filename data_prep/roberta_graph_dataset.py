@@ -40,7 +40,7 @@ class RobertaGraphDataset(GraphDataset):
         features_docs = []
         features_words = []
         doc_embedder = RobertaModel.from_pretrained('roberta-base').to(self._device)
-        token_embedder = GloVe(name='840B', dim=300, max_vectors=10000)
+        token_embedder = GloVe(name='840B', dim=300)
 
         print('Generating document node features')
         encodings = self._tokenizer(self._raw_texts, truncation=True, padding=True)['input_ids']
