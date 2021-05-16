@@ -39,17 +39,13 @@ class RobertaGraphDataset(GraphDataset):
         """
         features_docs = []
         features_words = []
-        doc_embedder = RobertaModel.from_pretrained('roberta-base')
-        token_embedder = GloVe(name='840B', dim=300)
+        doc_embedder = RobertaModel.from_pretrained('roberta-base').to(self._device)
+        token_embedder = GloVe(name='840B', dim=300, max_vectors=10000)
 
         print('Generating document node features')
-        for text in self._raw_texts:
-            encodings = self._tokenizer.encode(text, truncation=True, padding=False)
-            encodings = torch.tensor(encodings, dtype=torch.long).unsqueeze(0)
-            embed_doc = doc_embedder(encodings)[1]
-            features_docs.append(embed_doc.squeeze())
-        features_docs = torch.stack(features_docs)
-        features_docs = features_docs.to(self._device)
+        encodings = self._tokenizer(self._raw_texts, truncation=True, padding=True)['input_ids']
+        encodings = torch.tensor(encodings, dtype=torch.long, device=self._device)
+        features_docs = doc_embedder(encodings)[1]
 
         print('Generating word node features')
         for token in self._tokens:
