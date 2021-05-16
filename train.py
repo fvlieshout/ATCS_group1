@@ -5,7 +5,6 @@ import time
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
 import torch
-from data_prep.data_utils import get_dataloaders
 from models.model import DocumentClassifier
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
