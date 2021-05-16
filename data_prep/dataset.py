@@ -16,9 +16,6 @@ class Dataset(data.Dataset, metaclass=abc.ABCMeta):
 
         self._tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
 
-        # TODO: maybe move to GraphDataset (if not needed for roberta)
-        self._device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-
     @abc.abstractmethod
     def labels(self):
         """

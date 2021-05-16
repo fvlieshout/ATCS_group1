@@ -51,7 +51,6 @@ class RobertaGraphDataset(GraphDataset):
         for token in self._tokens:
             embed_token = token_embedder[token]
             features_words.append(embed_token)
-        features_words = torch.stack(features_words)
-        features_words = features_words.to(self._device)
+        features_words = torch.stack(features_words).to(self._device)
 
         return features_docs, features_words

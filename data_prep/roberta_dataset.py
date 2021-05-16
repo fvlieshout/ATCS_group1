@@ -40,16 +40,10 @@ class RobertaDataset(Dataset):
         return self._labels
 
     def __getitem__(self, idx):
-        # assumes that the encodings were created using a HuggingFace tokenizer
-        # item = {key: torch.tensor(val[idx]) for key, val in self._encodings.items()}
-        # item["labels"] = torch.tensor(self._labels[idx])
-        # return item
-
-        item = {
+        return {
             "text": self._texts[idx],
             "label": self._labels[idx]
         }
-        return item
 
     def __len__(self):
         return len(self._labels)
