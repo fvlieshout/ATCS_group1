@@ -1,5 +1,6 @@
 from data_prep.data import HuggingFaceData
 
+
 # class AGNewsData(Data):
 #     def __init__(self, val_size=0.1):
 #         splits, unique_cls = self.prepare_agnews(val_size=val_size)
@@ -31,7 +32,7 @@ from data_prep.data import HuggingFaceData
 #         texts = [data["text"] for data in dataset]
 #         labels = [data["label"] for data in dataset]
 #         return texts, labels
-    
+
 #     @property
 #     def train_data(self):
 #         """
@@ -40,7 +41,7 @@ from data_prep.data import HuggingFaceData
 #             labels (List): List of training label ids as integer.
 #         """
 #         return self.train
-    
+
 #     @property
 #     def test_data(self):
 #         """
@@ -49,7 +50,7 @@ from data_prep.data import HuggingFaceData
 #             labels (List): List of test label ids as integer.
 #         """
 #         return self.test
-    
+
 #     @property
 #     def val_data(self):
 #         """
@@ -58,7 +59,7 @@ from data_prep.data import HuggingFaceData
 #             labels (List): List of val label ids as integer.
 #         """
 #         return self.val
-    
+
 #     @property
 #     def num_classes(self):
 #         """
@@ -69,5 +70,6 @@ class AGNewsData(HuggingFaceData):
     """
     Wrapper for the IMDb dataset.
     """
+
     def __init__(self, val_size=0.1):
         super().__init__(dataset_name="ag_news", val_size=val_size)

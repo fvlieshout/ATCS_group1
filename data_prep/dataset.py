@@ -4,11 +4,11 @@ from collections import defaultdict
 
 import torch
 import torch.utils.data as data
+import torchtext.vocab as vocab
 from data_prep.graph_utils import tf_idf_mtx, get_PMI
 from nltk.corpus import reuters
 from torch_geometric.data import Data
 from transformers import RobertaModel
-import torchtext.vocab as vocab
 
 
 class Dataset(data.Dataset, metaclass=abc.ABCMeta):
@@ -183,6 +183,7 @@ class GraphDataset(Dataset):
         """
         raise NotImplementedError
 
+
 class RobertaGraphDataset(GraphDataset):
     def __init__(self, device, n_train_docs, tokenizer):
         super().__init__(device, n_train_docs)
@@ -190,11 +191,11 @@ class RobertaGraphDataset(GraphDataset):
         self.word_embeddings = vocab.GloVe(name='840B', dim=300)
         self.doc_embeddings = RobertaModel.from_pretrained('roberta-base')
         self.doc_embeddings.eval()
-    
+
     def initialize_data(self, docs, classes):
         super().initialize_data(docs, classes)
         self.data.doc_features, self.data.word_features = self.generate_features(self.words)
-    
+
     def generate_features(self, words):
         print('Generating feature matrix')
         features_docs = []
@@ -212,13 +213,14 @@ class RobertaGraphDataset(GraphDataset):
             features_docs.append(embed_doc)
         features_docs = torch.squeeze(torch.stack(features_docs))
         # features_docs.requires_grad = False
-        
+
         for word in words:
             embedded_word = self.word_embeddings[word]
             features_words.append(embedded_word)
         features_words = torch.stack(features_words)
         # features_words.requires_grad = False
         return features_docs, features_words
+
 
 class Reuters(Dataset):
     """

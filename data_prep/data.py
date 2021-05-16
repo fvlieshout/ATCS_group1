@@ -1,11 +1,14 @@
 import abc
+
 from datasets import load_dataset
+
 
 class Data(metaclass=abc.ABCMeta):
     """
     Parent class for all datasets.
     Require to implement a train_data, test_data, val_data, and num_classes properties.
     """
+
     @property
     @abc.abstractmethod
     def train_data(self):
@@ -15,7 +18,7 @@ class Data(metaclass=abc.ABCMeta):
             labels (List): List of training label ids as integer.
         """
         raise NotImplementedError
-    
+
     @property
     @abc.abstractmethod
     def test_data(self):
@@ -25,7 +28,7 @@ class Data(metaclass=abc.ABCMeta):
             labels (List): List of test label ids as integer.
         """
         raise NotImplementedError
-    
+
     @property
     @abc.abstractmethod
     def val_data(self):
@@ -35,7 +38,7 @@ class Data(metaclass=abc.ABCMeta):
             labels (List): List of val label ids as integer.
         """
         raise NotImplementedError
-    
+
     @property
     @abc.abstractmethod
     def num_classes(self):
@@ -43,6 +46,7 @@ class Data(metaclass=abc.ABCMeta):
         Get the number of unique classes in the dataset.
         """
         raise NotImplementedError
+
 
 class HuggingFaceData(Data):
     def __init__(self, dataset_name, val_size=0.1):
@@ -76,7 +80,7 @@ class HuggingFaceData(Data):
         texts = [data["text"] for data in dataset]
         labels = [data["label"] for data in dataset]
         return texts, labels
-    
+
     @property
     def train_data(self):
         """
@@ -85,7 +89,7 @@ class HuggingFaceData(Data):
             labels (List): List of training label ids as integer.
         """
         return self.train
-    
+
     @property
     def test_data(self):
         """
@@ -94,7 +98,7 @@ class HuggingFaceData(Data):
             labels (List): List of test label ids as integer.
         """
         return self.test
-    
+
     @property
     def val_data(self):
         """
@@ -103,7 +107,7 @@ class HuggingFaceData(Data):
             labels (List): List of val label ids as integer.
         """
         return self.val
-    
+
     @property
     def num_classes(self):
         """
