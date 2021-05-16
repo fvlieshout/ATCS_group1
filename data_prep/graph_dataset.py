@@ -48,7 +48,7 @@ class GraphDataset(Dataset, GeometricDataset):
                                                                len(test_texts), len(iton))
 
         doc_labels = train_labels + val_labels + test_labels
-        self._labels = torch.zeros(len(iton), device=self._device) - 1
+        self._labels = torch.full((len(iton),), -1, device=self._device)
         self._labels[:len(doc_labels)] = torch.tensor(doc_labels)
 
         self._data = Data(edge_index=edge_index, edge_attr=edge_attr, y=self._labels)
