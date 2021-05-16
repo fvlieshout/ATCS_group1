@@ -1,8 +1,10 @@
 import random
 from collections import defaultdict
+
 import nltk
-from nltk.corpus import reuters
 from data_prep.data import Data
+from nltk.corpus import reuters
+
 
 class ReutersData(Data):
     def __init__(self, r8=False, val_size=0.1):
@@ -62,7 +64,7 @@ class ReutersData(Data):
         # sort the unique classes to ensure constant order
         unique_classes = sorted(data.keys())
         return (train_docs, test_docs, val_docs), unique_classes
-    
+
     @staticmethod
     def _prepare_split(docs, classes):
         """
@@ -82,8 +84,8 @@ class ReutersData(Data):
             texts.append(text)
             labels.append(classes.index(clz))
 
-        return texts, labels
-    
+        return DataSplit(texts, labels)
+
     @property
     def train_data(self):
         """
@@ -92,7 +94,7 @@ class ReutersData(Data):
             labels (List): List of training label ids as integer.
         """
         return self.train
-    
+
     @property
     def test_data(self):
         """
@@ -101,7 +103,7 @@ class ReutersData(Data):
             labels (List): List of test label ids as integer.
         """
         return self.test
-    
+
     @property
     def val_data(self):
         """
@@ -110,7 +112,7 @@ class ReutersData(Data):
             labels (List): List of val label ids as integer.
         """
         return self.val
-    
+
     @property
     def num_classes(self):
         """
@@ -118,16 +120,26 @@ class ReutersData(Data):
         """
         return len(self.classes)
 
+
 class R52Data(ReutersData):
     """
     Wrapper for the R52 dataset.
     """
+
     def __init__(self, val_size=0.1):
         super().__init__(r8=False, val_size=val_size)
+
 
 class R8Data(ReutersData):
     """
     Wrapper for the R8 dataset.
     """
+
     def __init__(self, val_size=0.1):
         super().__init__(r8=True, val_size=val_size)
+
+
+class DataSplit:
+    def __init__(self, texts, labels):
+        self.texts = texts
+        self.labels = labels

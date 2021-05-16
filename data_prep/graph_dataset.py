@@ -57,17 +57,9 @@ class GraphDataset(Dataset, GeometricDataset):
         self._data.val_mask = val_mask
         self._data.test_mask = test_mask
 
-    # THIS FUNCTION IS NOT REALLY NEEDED
-    @property
-    def num_classes(self):
-        """
-        Return the number of unique classes in the dataset.
-        """
-        return self._num_classes
-
     def labels(self):
         """
-        Return the labels of datapoints.
+        Return the labels of data points.
 
         Returns:
             labels (Tensor): Document and word labels
@@ -80,7 +72,8 @@ class GraphDataset(Dataset, GeometricDataset):
         """
         return geom_data.DataLoader(self)
 
-    def _generate_edges(self, tf_idf, tf_idf_words, pmi_scores, ntoi):
+    @staticmethod
+    def _generate_edges(tf_idf, tf_idf_words, pmi_scores, ntoi):
         """
         Generates edge list and weights based on tf.idf and PMI.
         Args:

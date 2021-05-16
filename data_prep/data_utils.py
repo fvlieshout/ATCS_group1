@@ -4,6 +4,7 @@ from data_prep.imdb_data import *
 from data_prep.pure_graph_dataset import *
 from data_prep.reuters_data import *
 from data_prep.roberta_graph_dataset import *
+from data_prep.roberta_dataset import *
 
 
 def get_dataloaders(model, b_size, data_name):
@@ -12,7 +13,7 @@ def get_dataloaders(model, b_size, data_name):
 
     if model == 'roberta':
         train_dataloader = RobertaDataset(corpus.train).as_dataloader(b_size, shuffle=True)
-        test_dataloader = RobertaDataset(corpus.text).as_dataloader(b_size)
+        test_dataloader = RobertaDataset(corpus.test).as_dataloader(b_size)
         val_dataloader = RobertaDataset(corpus.val).as_dataloader(b_size)
 
         additional_params['num_classes'] = corpus.num_classes

@@ -1,5 +1,7 @@
 from data_prep.dataset import Dataset
 from torch.utils.data import DataLoader
+from transformers.data.data_collator import default_data_collator
+import torch
 
 
 class RobertaDataset(Dataset):
@@ -7,11 +9,11 @@ class RobertaDataset(Dataset):
     Text Dataset used by the Roberta model.
     """
 
-    def __init__(self, corpus):
+    def __init__(self, data):
         super().__init__()
 
-        self._labels = corpus.labels
-        self._encodings = self._tokenizer(corpus.texts, truncation=True, padding=True)
+        self._labels = data.labels
+        self._encodings = self._tokenizer(data.texts, truncation=True, padding=True)
 
     def as_dataloader(self, b_size, shuffle=False):
         return DataLoader(self, batch_size=b_size, num_workers=24, shuffle=shuffle, collate_fn=self.get_collate_fn())
@@ -48,8 +50,8 @@ class RobertaDataset(Dataset):
         # if isinstance(self._data, R8Data):
 
         # assumes that the encodings were created using a HuggingFace tokenizer
-        item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
-        item["labels"] = torch.tensor(self.labels[idx])
+        item = {key: torch.tensor(val[idx]) for key, val in self._encodings.items()}
+        item["labels"] = torch.tensor(self._labels[idx])
         return item
 
         # elif isinstance(self._data, AGNewsData):
