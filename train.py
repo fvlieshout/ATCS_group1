@@ -27,15 +27,16 @@ SUPPORTED_MODELS = ['roberta', 'pure_gnn', 'roberta_gnn']
 SUPPORTED_DATASETS = ['R8Text', 'R52Text', 'R8Graph', 'R52Graph', 'AGNewsText', 'AGNewsGraph']
 
 
-def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, dataset_name):
+def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, dataset_name,
+          resume):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if model_name not in SUPPORTED_MODELS:
         raise ValueError("Model type '%s' is not supported." % model_name)
 
     print(f'Configuration:\n model_name: {model_name}\n max epochs: {epochs}\n patience: {patience}'
-          f'\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n warmup: {warmup}\n '
-          f'weight_decay: {w_decay}\n cf_hidden_dim: {cf_hidden_dim}\n dataset_name: {dataset_name}\n')
+          f'\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n warmup: {warmup}\n weight_decay: {w_decay}\n'
+          f' cf_hidden_dim: {cf_hidden_dim}\n dataset_name: {dataset_name}\n resume checkpoint: {resume}\n')
 
     pl.seed_everything(seed)
 
@@ -51,8 +52,19 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
         **additional_params
     }
 
-    model = DocumentClassifier(model_params, optimizer_hparams)
     trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, dataset_name)
+
+    # optionally resume from a checkpoint
+    if resume is not None:
+        print(f'=> intending to resume from checkpoint')
+        if os.path.isfile(resume):
+            print(f"=> loading checkpoint '{resume}'")
+            model = DocumentClassifier.load_from_checkpoint(resume)
+            print(f"=> loaded checkpoint '{resume}'\n")
+        else:
+            raise ValueError(f"No checkpoint found at '{resume}'!")
+    else:
+        model = DocumentClassifier(model_params, optimizer_hparams)
 
     # Training
     print('Fitting model ..........\n')
@@ -206,6 +218,8 @@ if __name__ == "__main__":
                         help='Select the model you want to use.')
     parser.add_argument('--seed', dest='seed', type=int, default=1234)
     parser.add_argument('--cf-hidden-dim', dest='cf_hidden_dim', type=int, default=512)
+    parser.add_argument('--resume', default=None, type=str, metavar='PATH',
+                        help='path to latest checkpoint (default: None)')
 
     params = vars(parser.parse_args())
 
@@ -220,5 +234,6 @@ if __name__ == "__main__":
         warmup=params["warmup"],
         max_iters=params["max_iters"],
         cf_hidden_dim=params["cf_hidden_dim"],
-        dataset_name=params["dataset"]
+        dataset_name=params["dataset"],
+        resume=params["resume"]
     )
