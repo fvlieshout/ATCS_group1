@@ -84,7 +84,7 @@ class ReutersData(Data):
             texts.append(text)
             labels.append(classes.index(clz))
 
-        return DataSplit(texts, labels)
+        return texts, labels
 
     @property
     def train_data(self):
@@ -137,9 +137,3 @@ class R8Data(ReutersData):
 
     def __init__(self, val_size=0.1):
         super().__init__(r8=True, val_size=val_size)
-
-
-class DataSplit:
-    def __init__(self, texts, labels):
-        self.texts = texts
-        self.labels = labels

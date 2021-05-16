@@ -38,7 +38,7 @@ def get_data(data_name):
     if data_name in ['R8', 'R52']:
         return ReutersData(r8=data_name == 'R8')
     elif data_name == 'AGNews':
-        return AGNewsText()
+        return AGNewsData()
     elif data_name == 'IMDb':
         return IMDbData()
     else:
