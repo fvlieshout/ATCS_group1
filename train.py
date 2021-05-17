@@ -23,7 +23,7 @@ SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
 def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, data_name,
-          resume):
+          resume, pretrained):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if model_name not in SUPPORTED_MODELS:
@@ -45,10 +45,11 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
     model_params = {
         'model': model_name,
         'cf_hid_dim': cf_hidden_dim,
+        'checkpoint': pretrained,
         **additional_params
     }
 
-    trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, data_name)
+    trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, data_name, pretrained)
 
     # optionally resume from a checkpoint
     if resume is not None:
@@ -61,6 +62,8 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
             raise ValueError(f"No checkpoint found at '{resume}'!")
     else:
         model = DocumentClassifier(model_params, optimizer_hparams)
+
+    test_acc, val_acc = evaluate(trainer, model, test_loader, val_loader)
 
     # Training
     print('Fitting model ..........\n')
@@ -113,12 +116,16 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
     return test_accuracy, val_accuracy
 
 
-def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmup, seed, dataset):
+def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmup, seed, dataset, pretrained):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
     os.makedirs(LOG_PATH, exist_ok=True)
 
+    if pretrained is not None:
+        model_name = f'{model_name}-pretrained'
+    
     version_str = f'dname={dataset}_seed={seed}_lr={l_rate}_wdec={weight_decay}_wsteps={warmup}'
+    
     logger = TensorBoardLogger(LOG_PATH, name=model_name, version=version_str)
 
     early_stop_callback = EarlyStopping(
@@ -160,6 +167,7 @@ if __name__ == "__main__":
 
     # CONFIGURATION
 
+    parser.add_argument('--checkpoint', dest='checkpoint', default=None, help='Path to the checkpoint file.')
     parser.add_argument('--dataset', dest='dataset', default='R8', choices=SUPPORTED_DATASETS,
                         help='Select the dataset you want to use.')
     parser.add_argument('--model', dest='model', default='roberta_gnn', choices=SUPPORTED_MODELS,
@@ -183,5 +191,6 @@ if __name__ == "__main__":
         max_iters=params["max_iters"],
         cf_hidden_dim=params["cf_hidden_dim"],
         data_name=params["dataset"],
-        resume=params["resume"]
+        resume=params["resume"],
+        pretrained=params["checkpoint"]
     )
