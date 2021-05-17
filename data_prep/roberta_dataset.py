@@ -12,7 +12,7 @@ class RobertaDataset(Dataset):
     def __init__(self, data):
         super().__init__()
 
-        self._labels, self._texts = data
+        self._texts, self._labels = data
 
     def as_dataloader(self, b_size, shuffle=False):
         return DataLoader(self, batch_size=b_size, num_workers=24, shuffle=shuffle, collate_fn=self.get_collate_fn())
