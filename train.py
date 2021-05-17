@@ -22,7 +22,7 @@ SUPPORTED_MODELS = ['roberta', 'pure_gnn', 'roberta_gnn']
 SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
-def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, dataset_name,
+def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, data_name,
           resume):
     os.makedirs(LOG_PATH, exist_ok=True)
 
@@ -30,7 +30,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
         raise ValueError("Model type '%s' is not supported." % model_name)
 
     print(
-        f'Configuration:\n model_name: {model_name}\n dataset_name: {dataset_name}\n max epochs: {epochs}\n'
+        f'Configuration:\n model_name: {model_name}\n data_name: {data_name}\n max epochs: {epochs}\n'
         f' patience: {patience}\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n warmup: {warmup}\n '
         f'weight_decay: {w_decay}\n cf_hidden_dim: {cf_hidden_dim}\n resume checkpoint: {resume}\n')
 
@@ -38,7 +38,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
 
     # the data preprocessing
 
-    train_loader, val_loader, test_loader, additional_params = get_dataloaders(model_name, b_size, dataset_name)
+    train_loader, val_loader, test_loader, additional_params = get_dataloaders(model_name, b_size, data_name)
 
     optimizer_hparams = {"lr": l_rate, "weight_decay": w_decay, "warmup": warmup, "max_iters": max_iters}
 
@@ -160,7 +160,7 @@ if __name__ == "__main__":
 
     # CONFIGURATION
 
-    parser.add_argument('--dataset', dest='dataset', default='R8Graph', choices=SUPPORTED_DATASETS,
+    parser.add_argument('--dataset', dest='dataset', default='R8', choices=SUPPORTED_DATASETS,
                         help='Select the dataset you want to use.')
     parser.add_argument('--model', dest='model', default='roberta_gnn', choices=SUPPORTED_MODELS,
                         help='Select the model you want to use.')
@@ -182,6 +182,6 @@ if __name__ == "__main__":
         warmup=params["warmup"],
         max_iters=params["max_iters"],
         cf_hidden_dim=params["cf_hidden_dim"],
-        dataset_name=params["dataset"],
+        data_name=params["dataset"],
         resume=params["resume"]
     )
