@@ -1,6 +1,7 @@
 import abc
 
 import torch.utils.data as data
+from transformers import RobertaTokenizerFast
 
 
 class Dataset(data.Dataset, metaclass=abc.ABCMeta):
@@ -9,13 +10,10 @@ class Dataset(data.Dataset, metaclass=abc.ABCMeta):
     Require to implement a num_classes property and a labels method.
     """
 
-    @property
-    @abc.abstractmethod
-    def num_classes(self):
-        """
-        Return the number of unique classes in the dataset.
-        """
-        raise NotImplementedError
+    def __init__(self):
+        super().__init__()
+
+        self._tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
 
     @abc.abstractmethod
     def labels(self):

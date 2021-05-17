@@ -14,8 +14,8 @@ class RobertaGraphDataset(GraphDataset):
     Text Dataset used by the Roberta graph model.
     """
 
-    def __init__(self, corpus, device):
-        super().__init__(corpus, device)
+    def __init__(self, corpus):
+        super().__init__(corpus)
         self._data.doc_features, self._data.word_features = self._generate_features()
 
     def _preprocess(self):
@@ -52,7 +52,6 @@ class RobertaGraphDataset(GraphDataset):
         for token in self._tokens:
             embed_token = token_embedder[token]
             features_words.append(embed_token)
-        features_words = torch.stack(features_words)
-        features_words = features_words.to(self._device)
+        features_words = torch.stack(features_words).to(self._device)
 
         return features_docs, features_words

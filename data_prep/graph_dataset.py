@@ -1,12 +1,11 @@
 import abc
 
+import torch_geometric.data as geom_data
 import torch
-from torch_geometric.data import Dataset as GeometricDataset
-from torch_geometric.data import Data
-from transformers import RobertaTokenizerFast
-
 from data_prep.dataset import Dataset
 from data_prep.graph_utils import tf_idf_mtx, get_PMI
+from torch_geometric.data import Data
+from torch_geometric.data import Dataset as GeometricDataset
 
 
 class GraphDataset(Dataset, GeometricDataset):
@@ -15,10 +14,9 @@ class GraphDataset(Dataset, GeometricDataset):
     Require to implement a preprocess and generate_features methods.
     """
 
-    def __init__(self, corpus, device):
+    def __init__(self, corpus):
         super().__init__()
-        self._device = device
-        self._tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
+        self._device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
         self._num_classes = corpus.num_classes
 
         train_texts, train_labels = corpus.train_data
@@ -26,6 +24,8 @@ class GraphDataset(Dataset, GeometricDataset):
         test_texts, test_labels = corpus.test_data
 
         self._raw_texts = train_texts + val_texts + test_texts
+        # self._raw_texts = self._raw_texts[:100]
+
         # Hopefully no tokenizer makes a token "doc.i"
         all_docs = ['doc.{}'.format(i) for i in range(len(self._raw_texts))]
 
@@ -34,6 +34,7 @@ class GraphDataset(Dataset, GeometricDataset):
 
         iton = list(all_docs + self._tokens)
         ntoi = {iton[i]: i for i in range(len(iton))}
+        self.num_nodes = len(iton)
 
         print('Compute tf.idf')
         tf_idf, tf_idf_words = tf_idf_mtx(tokenized_text)
@@ -45,10 +46,11 @@ class GraphDataset(Dataset, GeometricDataset):
         edge_index, edge_attr = self._generate_edges(tf_idf, tf_idf_words, pmi_score, ntoi)
 
         print('Generate masks')
-        train_mask, val_mask, test_mask = self._generate_masks(len(train_texts), len(val_texts),
-                                                               len(test_texts), len(iton))
+        train_mask, val_mask, test_mask = self._generate_masks(len(train_texts), len(val_texts), len(test_texts))
 
         doc_labels = train_labels + val_labels + test_labels
+        # doc_labels = doc_labels[:100]
+
         self._labels = torch.full((len(iton),), -1, device=self._device)
         self._labels[:len(doc_labels)] = torch.tensor(doc_labels)
 
@@ -57,24 +59,23 @@ class GraphDataset(Dataset, GeometricDataset):
         self._data.val_mask = val_mask
         self._data.test_mask = test_mask
 
-    # THIS FUNCTION IS NOT REALLY NEEDED
-    @property
-    def num_classes(self):
-        """
-        Return the number of unique classes in the dataset.
-        """
-        return self._num_classes
-
     def labels(self):
         """
-        Return the labels of datapoints.
+        Return the labels of data points.
 
         Returns:
             labels (Tensor): Document and word labels
         """
         return self._labels
 
-    def _generate_edges(self, tf_idf, tf_idf_words, pmi_scores, ntoi):
+    def as_dataloader(self):
+        """
+        Return this dataset as data loader from torch geometric.
+        """
+        return geom_data.DataLoader(self)
+
+    @staticmethod
+    def _generate_edges(tf_idf, tf_idf_words, pmi_scores, ntoi):
         """
         Generates edge list and weights based on tf.idf and PMI.
         Args:
@@ -91,8 +92,7 @@ class GraphDataset(Dataset, GeometricDataset):
 
         # Document-word edges
         for d_ind, doc in enumerate(tf_idf):
-            tf_idf_inds = doc.indices
-            for tf_idf_ind in tf_idf_inds:
+            for tf_idf_ind in doc.indices:
                 # Convert index from tf.idf to index in ntoi
                 word = tf_idf_words[tf_idf_ind]
                 w_ind = ntoi[word]
@@ -115,7 +115,7 @@ class GraphDataset(Dataset, GeometricDataset):
         edge_attr = torch.tensor(edge_attr).float()
         return edge_index, edge_attr
 
-    def _generate_masks(self, train_num, val_num, test_num, all_num):
+    def _generate_masks(self, train_num, val_num, test_num):
         """
         Generates masking for the different splits in the dataset.
         Args:
@@ -128,14 +128,14 @@ class GraphDataset(Dataset, GeometricDataset):
             val_mask (Tensor): Validation mask as boolean tensor.
             test_mask (Tensor): Test mask as boolean tensor.
         """
-        train_mask = torch.zeros(all_num, device=self._device)
+        train_mask = torch.zeros(self.num_nodes, device=self._device)
         train_mask[:train_num] = 1
 
-        val_mask = torch.zeros(all_num, device=self._device)
+        val_mask = torch.zeros(self.num_nodes, device=self._device)
         val_mask[train_num:train_num + val_num] = 1
 
         # Mask all non-test docs
-        test_mask = torch.zeros(all_num, device=self._device)
+        test_mask = torch.zeros(self.num_nodes, device=self._device)
         test_mask[val_num + train_num:val_num + train_num + test_num] = 1
 
         return train_mask.bool(), val_mask.bool(), test_mask.bool()

@@ -8,8 +8,8 @@ class PureGraphDataset(GraphDataset):
     Text Dataset used by the pure graph model.
     """
 
-    def __init__(self, corpus, device):
-        super().__init__(corpus, device)
+    def __init__(self, corpus):
+        super().__init__(corpus)
         print('Generating feature matrix')
         self._data.x = self._generate_features()
 
@@ -42,8 +42,7 @@ class PureGraphDataset(GraphDataset):
             embed_doc = torch.zeros(self._tokenizer.vocab_size)
             embed_doc[encodings] = 1
             features_docs.append(embed_doc)
-        features_docs = torch.stack(features_docs)
-        features_docs = features_docs.to(self._device)
+        features_docs = torch.stack(features_docs).to(self._device)
 
         print('Generating word node features')
         features_words = torch.eye(len(self._tokens), device=self._device).float()
