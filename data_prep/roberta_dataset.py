@@ -1,9 +1,11 @@
 from data_prep.dataset import Dataset
 
+
 class RobertaDataset(Dataset):
     """
     Text Dataset used by the Roberta model.
     """
+
     def __init__(self, *args, **kwargs):
         raise NotImplementedError
 
