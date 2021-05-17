@@ -18,7 +18,7 @@ def get_dataloaders(model, b_size, data_name):
 
         additional_params['num_classes'] = corpus.num_classes
 
-        return train_loader, test_loader, val_loader, additional_params
+        return train_loader, val_loader, test_loader, additional_params
 
     if model == 'pure_gnn':
         dataset = PureGraphDataset(corpus)
@@ -34,12 +34,14 @@ def get_dataloaders(model, b_size, data_name):
         return train_loader, val_loader, test_loader, additional_params
 
 
-def get_data(data_name):
-    if data_name in ['R8', 'R52']:
-        return ReutersData(r8=data_name == 'R8')
+def get_data(data_name, val_size=0.1):
+    if data_name == 'R8':
+        return R8Data(val_size=val_size)
+    elif data_name == 'R52':
+        return R52Data(val_size=val_size)
     elif data_name == 'AGNews':
-        return AGNewsData()
+        return AGNewsData(val_size=val_size)
     elif data_name == 'IMDb':
-        return IMDbData()
+        return IMDbData(val_size=val_size)
     else:
         raise ValueError("Data with name '%s' is not supported." % data_name)
