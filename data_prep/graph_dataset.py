@@ -1,7 +1,6 @@
 import abc
 
 import torch
-import torch_geometric.data as geom_data
 from data_prep.dataset import Dataset
 from data_prep.graph_utils import tf_idf_mtx, get_PMI
 from torch_geometric.data import Data
