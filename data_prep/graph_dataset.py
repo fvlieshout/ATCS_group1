@@ -5,7 +5,6 @@ from data_prep.dataset import Dataset
 from data_prep.graph_utils import tf_idf_mtx, get_PMI
 from torch_geometric.data import Data
 from torch_geometric.data import Dataset as GeometricDataset
-from transformers import RobertaTokenizerFast
 
 
 class GraphDataset(Dataset, GeometricDataset):
