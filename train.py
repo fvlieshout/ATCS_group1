@@ -23,7 +23,7 @@ SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
 def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, data_name,
-          resume, pretrained):
+          resume, transfer):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if model_name not in SUPPORTED_MODELS:
@@ -45,14 +45,14 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
     model_params = {
         'model': model_name,
         'cf_hid_dim': cf_hidden_dim,
-        'checkpoint': pretrained,
+        'checkpoint': resume,
         **additional_params
     }
 
-    trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, data_name, pretrained)
+    trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, data_name, transfer)
 
     # optionally resume from a checkpoint
-    if resume is not None:
+    if not transfer and resume is not None:
         print(f'=> intending to resume from checkpoint')
         if os.path.isfile(resume):
             print(f"=> loading checkpoint '{resume}'")
@@ -116,13 +116,13 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
     return test_accuracy, val_accuracy
 
 
-def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmup, seed, dataset, pretrained):
+def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmup, seed, dataset, transfer):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
     os.makedirs(LOG_PATH, exist_ok=True)
 
-    if pretrained is not None:
-        model_name = f'{model_name}-pretrained'
+    if transfer:
+        model_name = f'{model_name}-transfer'
     
     version_str = f'dname={dataset}_seed={seed}_lr={l_rate}_wdec={weight_decay}_wsteps={warmup}'
     
@@ -167,7 +167,6 @@ if __name__ == "__main__":
 
     # CONFIGURATION
 
-    parser.add_argument('--checkpoint', dest='checkpoint', default=None, help='Path to the checkpoint file.')
     parser.add_argument('--dataset', dest='dataset', default='R8', choices=SUPPORTED_DATASETS,
                         help='Select the dataset you want to use.')
     parser.add_argument('--model', dest='model', default='roberta_gnn', choices=SUPPORTED_MODELS,
@@ -176,6 +175,7 @@ if __name__ == "__main__":
     parser.add_argument('--cf-hidden-dim', dest='cf_hidden_dim', type=int, default=512)
     parser.add_argument('--resume', default=None, type=str, metavar='PATH',
                         help='path to latest checkpoint (default: None)')
+    parser.add_argument('--transfer', dest='transfer', action='store_true', help='Transfer the model to new dataset.')
 
     params = vars(parser.parse_args())
 
@@ -192,5 +192,5 @@ if __name__ == "__main__":
         cf_hidden_dim=params["cf_hidden_dim"],
         data_name=params["dataset"],
         resume=params["resume"],
-        pretrained=params["checkpoint"]
+        transfer=params["transfer"]
     )
