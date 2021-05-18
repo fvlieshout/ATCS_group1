@@ -35,9 +35,10 @@ class DocumentClassifier(pl.LightningModule):
         elif model_name == 'roberta':
             self.model = RobertaEncoder()
         elif model_name == 'glove_gnn':
-            self.model = GloveGraphEncoder(model_hparams['doc_dim'], model_hparams['word_dim'], roberta_output_dim)
+            self.model = GloveGraphEncoder(
+                model_hparams['doc_dim'], model_hparams['word_dim'], roberta_output_dim, model_hparams['gnn_layer_name'])
         elif model_name == 'roberta_gnn':
-            self.model = RobertaGraphEncoder(roberta_output_dim, roberta_output_dim)
+            self.model = RobertaGraphEncoder(roberta_output_dim, roberta_output_dim, model_hparams['gnn_layer_name'])
         else:
             raise ValueError("Model type '%s' is not supported." % model_name)
 
@@ -122,6 +123,7 @@ class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
         if epoch <= self.warmup:
             lr_factor *= epoch * 1.0 / self.warmup
         return lr_factor
+
 
 def load_pretrained_encoder(checkpoint_path):
     module = DocumentClassifier.load_from_checkpoint(checkpoint_path)
