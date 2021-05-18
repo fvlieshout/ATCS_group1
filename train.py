@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--epochs', dest='epochs', type=int, default=50)
     parser.add_argument('--patience', dest='patience', type=int, default=10)
-    parser.add_argument('--batch-size', dest='batch_size', type=int, default=1)
+    parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
     parser.add_argument('--lr', dest='l_rate', type=float, default=0.01)
     parser.add_argument("--w-decay", dest='w_decay', type=float, default=2e-3,
                         help="Weight decay for L2 regularization of optimizer AdamW")
