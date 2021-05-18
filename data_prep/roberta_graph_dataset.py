@@ -14,18 +14,6 @@ class RobertaGraphDataset(GraphDataset):
     Text Dataset used by the Roberta graph model.
     """
 
-    def _preprocess(self):
-        """
-        Preprocesses the corpus.
-
-        Returns:
-            tokenized_text (List): List of tokenized documents texts.
-            tokens (List): List of all tokens.
-        """
-        tokenized_text = [word_tokenize(text.lower()) for text in self._raw_texts]
-        tokens = sorted(list(set([token for text in tokenized_text for token in text])))
-        return tokenized_text, tokens
-
     def _generate_features(self):
         """
         Generates node features.
