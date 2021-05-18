@@ -85,9 +85,9 @@ class DocumentClassifier(pl.LightningModule):
             batch_idx     - Index of the batch in the dataset (not needed here).
         """
         # "batch" is the output of the training data loader
-        print("REQUIRE GRAD")
-        for n, p in self.named_parameters():
-            print(n, p.requires_grad)
+        # print("REQUIRE GRAD")
+        # for n, p  in self.named_parameters():
+        #    print(n, p.requires_grad)
 
         out, labels = self.model(batch, mode='train')
         predictions = self.classifier(out)
