@@ -1,4 +1,5 @@
 import nltk
+from collections import defaultdict
 
 nltk.download('punkt')
 from nltk import word_tokenize
@@ -18,7 +19,7 @@ class RobertaGraphDataset(GraphDataset):
         super().__init__(corpus)
         self._data.doc_features, self._data.word_features = self._generate_features()
 
-    def _preprocess(self):
+    def _preprocess(self, lower_threshold=4, upper_threshold=50):
         """
         Preprocesses the corpus.
 
@@ -27,7 +28,15 @@ class RobertaGraphDataset(GraphDataset):
             tokens (List): List of all tokens.
         """
         tokenized_text = [word_tokenize(text.lower()) for text in self._raw_texts]
-        tokens = sorted(list(set([token for text in tokenized_text for token in text])))
+        counter = defaultdict(lambda: 0)
+        for text in tokenized_text:
+            for token in set(text):
+                counter[token] += 1
+
+        tokenized_text = [
+            [token for token in text if counter[token] >= lower_threshold and counter[token] < upper_threshold]
+            for text in tokenized_text]
+        tokens = list(set([token for text in tokenized_text for token in text]))
         return tokenized_text, tokens
 
     def _generate_features(self):
