@@ -30,7 +30,9 @@ class DocumentClassifier(pl.LightningModule):
 
         roberta_output_dim = 768
         model_name = model_hparams['model']
-        if model_name == 'roberta':
+        if 'checkpoint' in model_hparams and model_hparams['checkpoint'] is not None:
+            self.model = load_pretrained_encoder(model_hparams['checkpoint'])
+        elif model_name == 'roberta':
             self.model = RobertaEncoder()
         elif model_name == 'pure_gnn':
             self.model = PureGraphEncoder(model_hparams['gnn_output_dim'], roberta_output_dim)
@@ -120,3 +122,8 @@ class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
         if epoch <= self.warmup:
             lr_factor *= epoch * 1.0 / self.warmup
         return lr_factor
+
+def load_pretrained_encoder(checkpoint_path):
+    module = DocumentClassifier.load_from_checkpoint(checkpoint_path)
+    module.freeze()
+    return module.model
