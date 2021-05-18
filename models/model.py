@@ -38,7 +38,8 @@ class DocumentClassifier(pl.LightningModule):
         elif model_name == 'roberta':
             self.model = RobertaEncoder()
         elif model_name == 'pure_gnn':
-            self.model = PureGraphEncoder(model_hparams['gnn_output_dim'], roberta_output_dim, model_hparams['gnn_layer_name'])
+            self.model = PureGraphEncoder(model_hparams['gnn_output_dim'], roberta_output_dim,
+                                          model_hparams['gnn_layer_name'])
         elif model_name == 'roberta_gnn':
             self.model = RobertaGraphEncoder(roberta_output_dim, roberta_output_dim, model_hparams['gnn_layer_name'])
         else:
@@ -57,6 +58,7 @@ class DocumentClassifier(pl.LightningModule):
 
     def configure_optimizers(self):
         params = list(self.named_parameters())
+
         def is_encoder(n): return n.startswith('model')
 
         grouped_parameters = [
@@ -65,7 +67,7 @@ class DocumentClassifier(pl.LightningModule):
         ]
 
         optimizer = AdamW(grouped_parameters, lr=self.hparams.optimizer_hparams['lr'],
-                        weight_decay=self.hparams.optimizer_hparams['weight_decay'])
+                          weight_decay=self.hparams.optimizer_hparams['weight_decay'])
 
         self.lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=self.hparams.optimizer_hparams['warmup'],
                                                   max_iters=self.hparams.optimizer_hparams['max_iters'])
@@ -84,9 +86,9 @@ class DocumentClassifier(pl.LightningModule):
         """
         # "batch" is the output of the training data loader
         print("REQUIRE GRAD")
-        for n, p  in self.named_parameters():
+        for n, p in self.named_parameters():
             print(n, p.requires_grad)
-        
+
         out, labels = self.model(batch, mode='train')
         predictions = self.classifier(out)
         loss = self.loss_module(predictions, labels)
@@ -137,6 +139,7 @@ class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
         if epoch <= self.warmup:
             lr_factor *= epoch * 1.0 / self.warmup
         return lr_factor
+
 
 def load_pretrained_encoder(checkpoint_path):
     module = DocumentClassifier.load_from_checkpoint(checkpoint_path)

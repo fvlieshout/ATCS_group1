@@ -12,9 +12,11 @@ class RobertaEncoder(nn.Module):
         # this model is in eval per default, we want to fine-tune it but only the top layers
         self.model.train()
 
-        # only freezing the encoder parameters / weights of the head layers
-        for param in self.model.base_model.parameters():
-            param.requires_grad = False
+        # freezing the encoder parameters from half of the layers
+        encoder_layers = self.model.encoder.layer
+        for layer in encoder_layers[:len(encoder_layers) / 2]:
+            for param in layer.parameters():
+                param.requires_grad = False
 
     # noinspection PyUnusedLocal
     def forward(self, batch, **kwargs):
