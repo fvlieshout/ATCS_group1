@@ -1,30 +1,16 @@
-import torch
 import torch.nn.functional as F
 from torch import nn
-from torch_geometric.nn import GraphConv
+from torch_geometric.nn import GCNConv
 
 
 class PureGraphEncoder(nn.Module):
-    def __init__(self, doc_dim=10000, word_dim=300, output_dim=768):
-        """
-        Initializes the pure graph encoder model
-
-        Args:
-            doc_dim (int, optional): Dimension of document embeddings. Defaults to 10000.
-            word_dim (int, optional): Dimension of word embeddings. Defaults to 300.
-        """
+    def __init__(self, input_dim, hidden_dim):
         super(PureGraphEncoder, self).__init__()
-        self.linlay = nn.Linear(doc_dim, word_dim)
-        self.conv1 = GraphConv(word_dim, output_dim)
-        self.conv2 = GraphConv(output_dim, output_dim)
+        self.conv1 = GCNConv(input_dim, hidden_dim)
+        self.conv2 = GCNConv(hidden_dim, hidden_dim)
 
     def forward(self, data, mode):
-        edge_index, edge_weight = data.edge_index, data.edge_attr
-        word_feats, doc_feats = data.word_features, data.doc_features
-
-        doc_feats = self.linlay(doc_feats)
-        x = torch.cat((doc_feats, word_feats))
-
+        x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
         x = self.conv1(x, edge_index, edge_weight)
         x = F.relu(x)
         x = F.dropout(x, training=self.training)

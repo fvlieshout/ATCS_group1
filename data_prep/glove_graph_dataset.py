@@ -6,7 +6,7 @@ from torchtext.vocab import GloVe
 from data_prep.graph_dataset import GraphDataset
 
 
-class PureGraphDataset(GraphDataset):
+class GloveGraphDataset(GraphDataset):
     """
     Text Dataset used by the pure graph model.
     """
