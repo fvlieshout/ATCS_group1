@@ -32,10 +32,9 @@ class DocumentClassifier(pl.LightningModule):
         model_name = model_hparams['model']
         if 'checkpoint' in model_hparams and model_hparams['checkpoint'] is not None:
             self.model = load_pretrained_encoder(model_hparams['checkpoint'])
-            # only freezing the encoder parameters / weights of the head layers
+            # unfreeze the encoder parameters
             for param in self.model.parameters():
                 param.requires_grad = True
-            # self.model.train()
         elif model_name == 'roberta':
             self.model = RobertaEncoder()
         elif model_name == 'pure_gnn':
@@ -57,21 +56,16 @@ class DocumentClassifier(pl.LightningModule):
         self.lr_scheduler = None
 
     def configure_optimizers(self):
-        # params = list(self.named_parameters())
-        # def is_encoder(n): return n.startswith('model')
+        params = list(self.named_parameters())
+        def is_encoder(n): return n.startswith('model')
 
-        # grouped_parameters = [
-        #     {'params': [p for n, p in params if is_encoder(n)], 'lr': self.hparams.optimizer_hparams['lr']},
-        #     {'params': [p for n, p in params if not is_encoder(n)], 'lr': self.hparams.optimizer_hparams['lr'] * 100}
-        # ]
+        grouped_parameters = [
+            {'params': [p for n, p in params if is_encoder(n)], 'lr': self.hparams.optimizer_hparams['lr']},
+            {'params': [p for n, p in params if not is_encoder(n)], 'lr': self.hparams.optimizer_hparams['lr'] * 100}
+        ]
 
-        # for n, param in self.named_parameters():
-        #     print(n)
-
-        # optimizer = AdamW(grouped_parameters, lr=self.hparams.optimizer_hparams['lr'],
-        #                   weight_decay=self.hparams.optimizer_hparams['weight_decay'])
-        optimizer = AdamW(self.parameters(), lr=self.hparams.optimizer_hparams['lr'],
-                          weight_decay=self.hparams.optimizer_hparams['weight_decay'])
+        optimizer = AdamW(grouped_parameters, lr=self.hparams.optimizer_hparams['lr'],
+                        weight_decay=self.hparams.optimizer_hparams['weight_decay'])
 
         self.lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=self.hparams.optimizer_hparams['warmup'],
                                                   max_iters=self.hparams.optimizer_hparams['max_iters'])
@@ -91,7 +85,7 @@ class DocumentClassifier(pl.LightningModule):
         # "batch" is the output of the training data loader
         print("REQUIRE GRAD")
         for n, p  in self.named_parameters():
-            print(p.requires_grad)
+            print(n, p.requires_grad)
         
         out, labels = self.model(batch, mode='train')
         predictions = self.classifier(out)
@@ -146,6 +140,4 @@ class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
 
 def load_pretrained_encoder(checkpoint_path):
     module = DocumentClassifier.load_from_checkpoint(checkpoint_path)
-    module.train()
-    # module.freeze()
     return module.model
