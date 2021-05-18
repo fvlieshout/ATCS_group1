@@ -10,10 +10,10 @@ class PureGraphEncoder(nn.Module):
             self.conv1 = GCNConv(input_dim, hidden_dim)
             self.conv2 = GCNConv(hidden_dim, hidden_dim)
         elif graph_layer_name == 'GraphConv':
-            self.conv1 = GraphConv(input_dim, hidden_dim)
-            self.conv2 = GraphConv(hidden_dim, hidden_dim)
+            self.conv1 = GraphConv(input_dim, hidden_dim, aggr='mean')
+            self.conv2 = GraphConv(hidden_dim, hidden_dim, aggr='mean')
         else:
-            raise Exception('Layer name is not valid: %i' %graph_layer_name)
+            raise Exception('Layer name is not valid: %i' % graph_layer_name)
 
     def forward(self, data, mode):
         x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
