@@ -18,6 +18,7 @@ class RobertaGraphDataset(GraphDataset):
     def __init__(self, corpus):
         super().__init__(corpus)
         self._data.doc_features, self._data.word_features = self._generate_features()
+        self._data.num_nodes = self.num_nodes #setting this so pytorch_geometric can infer the number of nodes
 
     def _preprocess(self, lower_threshold=4, upper_threshold=50):
         """
