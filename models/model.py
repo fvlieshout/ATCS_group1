@@ -1,6 +1,6 @@
 import numpy as np
 import pytorch_lightning as pl
-from models.pure_graph_encoder import PureGraphEncoder
+from models.glove_graph_encoder import GloveGraphEncoder
 from models.roberta_encoder import RobertaEncoder
 from models.roberta_graph_encoder import RobertaGraphEncoder
 from numpy.lib.arraysetops import isin
@@ -33,7 +33,7 @@ class DocumentClassifier(pl.LightningModule):
         if model_name == 'roberta':
             self.model = RobertaEncoder()
         elif model_name == 'glove_gnn':
-            self.model = PureGraphEncoder(model_hparams['doc_dim'], model_hparams['word_dim'], roberta_output_dim)
+            self.model = GloveGraphEncoder(model_hparams['doc_dim'], model_hparams['word_dim'], roberta_output_dim)
         elif model_name == 'roberta_gnn':
             self.model = RobertaGraphEncoder(roberta_output_dim, roberta_output_dim)
         else:

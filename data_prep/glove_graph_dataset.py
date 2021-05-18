@@ -18,12 +18,12 @@ class GloveGraphDataset(GraphDataset):
         Returns:
             note_feats (Tensor): Tensor of all node embeddings.
         """
-        self.doc_dim = 10000
+        self.doc_dim = 5000
         self.word_dim = 300
 
         features_docs = []
         features_words = []
-        glove = GloVe(name='840B', dim=300, max_vectors=10000)
+        glove = GloVe(name='840B', dim=300)
 
         print('Generating document node features')
         for text in self._raw_texts:
