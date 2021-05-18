@@ -19,11 +19,12 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 LOG_PATH = "./logs/"
 
 SUPPORTED_MODELS = ['roberta', 'pure_gnn', 'roberta_gnn']
+SUPPORTED_GNN_LAYERS = ['GCNConv', 'GraphConv']
 SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
 def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, data_name,
-          resume, transfer):
+          resume, gnn_layer_name, transfer):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if model_name not in SUPPORTED_MODELS:
@@ -33,6 +34,8 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
         f'Configuration:\n model_name: {model_name}\n data_name: {data_name}\n max epochs: {epochs}\n'
         f' patience: {patience}\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n warmup: {warmup}\n '
         f'weight_decay: {w_decay}\n cf_hidden_dim: {cf_hidden_dim}\n resume checkpoint: {resume}\n')
+    if model_name in ['pure_gnn', 'roberta_gnn']:
+        print('GNN layer:', gnn_layer_name)
 
     pl.seed_everything(seed)
 
@@ -44,6 +47,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
 
     model_params = {
         'model': model_name,
+        'gnn_layer_name': gnn_layer_name,
         'cf_hid_dim': cf_hidden_dim,
         'checkpoint': resume,
         **additional_params
@@ -171,6 +175,8 @@ if __name__ == "__main__":
                         help='Select the dataset you want to use.')
     parser.add_argument('--model', dest='model', default='roberta_gnn', choices=SUPPORTED_MODELS,
                         help='Select the model you want to use.')
+    parser.add_argument('--gnn-layer-name', dest='gnn_layer_name', default='GCNConv', choices=SUPPORTED_GNN_LAYERS,
+                        help='Select the GNN layer you want to use.')
     parser.add_argument('--seed', dest='seed', type=int, default=1234)
     parser.add_argument('--cf-hidden-dim', dest='cf_hidden_dim', type=int, default=512)
     parser.add_argument('--resume', default=None, type=str, metavar='PATH',
@@ -192,5 +198,6 @@ if __name__ == "__main__":
         cf_hidden_dim=params["cf_hidden_dim"],
         data_name=params["dataset"],
         resume=params["resume"],
+        gnn_layer_name=params["gnn_layer_name"],
         transfer=params["transfer"]
     )
