@@ -2,11 +2,11 @@ import nltk
 
 nltk.download('reuters')
 from nltk.corpus import reuters
-from data_prep.dataset import GraphDataset, Reuters
+from data_prep.dataset import RobertaGraphDataset, Reuters
 
 
-class ReutersGraph(GraphDataset, Reuters):
-    def __init__(self, device, r8=False, val_size=0.1, n_train_docs=None):
+class ReutersGraph(RobertaGraphDataset, Reuters):
+    def __init__(self, device, r8=False, val_size=0.1, n_train_docs=None, tokenizer=None):
         """
         Creates the train, test, and validation splits for R52 or R8.
         Args:
@@ -19,7 +19,7 @@ class ReutersGraph(GraphDataset, Reuters):
             test_split (Dataset): Test split.
             val_split (Dataset): Validation split.
         """
-        super(ReutersGraph, self).__init__(device, n_train_docs)
+        super(ReutersGraph, self).__init__(device, n_train_docs, tokenizer)
 
         print('Prepare Reuters dataset')
         docs, classes = self.prepare_reuters(r8, val_size, n_train_docs)
@@ -69,5 +69,5 @@ class R8Graph(ReutersGraph):
     Wrapper for the R8 dataset.
     """
 
-    def __init__(self, device, val_size=0.1, n_train_docs=None):
-        super().__init__(r8=True, device=device, val_size=val_size, n_train_docs=n_train_docs)
+    def __init__(self, device, val_size=0.1, n_train_docs=None, tokenizer=None):
+        super().__init__(r8=True, device=device, val_size=val_size, n_train_docs=n_train_docs, tokenizer=tokenizer)
