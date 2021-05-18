@@ -60,7 +60,7 @@ class GraphDataset(Dataset, GeometricDataset):
         self._labels = torch.full((len(iton),), -1, device=self._device)
         self._labels[:len(doc_labels)] = torch.tensor(doc_labels)
 
-        self._data = Data(edge_index=edge_index, edge_attr=edge_attr, y=self._labels)
+        self._data = Data(edge_index=edge_index, edge_attr=edge_attr, y=self._labels, num_nodes=self.num_nodes)
         self._data.doc_features, self._data.word_features = self._generate_features()
         self._data.train_mask = train_mask
         self._data.val_mask = val_mask

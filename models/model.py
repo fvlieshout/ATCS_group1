@@ -33,7 +33,7 @@ class DocumentClassifier(pl.LightningModule):
         if model_name == 'roberta':
             self.model = RobertaEncoder()
         elif model_name == 'pure_gnn':
-            self.model = PureGraphEncoder(model_hparams['gnn_output_dim'], roberta_output_dim)
+            self.model = PureGraphEncoder(model_hparams['doc_dim'], model_hparams['word_dim'], roberta_output_dim)
         elif model_name == 'roberta_gnn':
             self.model = RobertaGraphEncoder(roberta_output_dim, roberta_output_dim)
         else:

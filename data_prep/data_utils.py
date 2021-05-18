@@ -22,6 +22,8 @@ def get_dataloaders(model, b_size, data_name):
 
     if model == 'pure_gnn':
         dataset = PureGraphDataset(corpus)
+        additional_params['doc_dim'] = dataset.doc_dim
+        additional_params['word_dim'] = dataset.word_dim
     elif model == 'roberta_gnn':
         dataset = RobertaGraphDataset(corpus)
     else:
