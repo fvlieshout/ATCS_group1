@@ -1,7 +1,7 @@
 from data_prep.agnews_data import *
 from data_prep.graph_dataset import *
 from data_prep.imdb_data import *
-from data_prep.pure_graph_dataset import *
+from data_prep.glove_graph_dataset import *
 from data_prep.reuters_data import *
 from data_prep.roberta_dataset import *
 from data_prep.roberta_graph_dataset import *
@@ -20,8 +20,10 @@ def get_dataloaders(model, b_size, data_name):
 
         return train_loader, val_loader, test_loader, additional_params
 
-    if model == 'pure_gnn':
-        dataset = PureGraphDataset(corpus)
+    if model == 'glove_gnn':
+        dataset = GloveGraphDataset(corpus)
+        additional_params['doc_dim'] = dataset.doc_dim
+        additional_params['word_dim'] = dataset.word_dim
     elif model == 'roberta_gnn':
         dataset = RobertaGraphDataset(corpus)
     else:

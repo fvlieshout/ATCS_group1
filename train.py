@@ -18,7 +18,7 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 LOG_PATH = "./logs/"
 
-SUPPORTED_MODELS = ['roberta', 'pure_gnn', 'roberta_gnn']
+SUPPORTED_MODELS = ['roberta', 'glove_gnn', 'roberta_gnn']
 SUPPORTED_GNN_LAYERS = ['GCNConv', 'GraphConv']
 SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
@@ -127,9 +127,9 @@ def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmu
 
     if transfer:
         model_name = f'{model_name}-transfer'
-    
+
     version_str = f'dname={dataset}_seed={seed}_lr={l_rate}_wdec={weight_decay}_wsteps={warmup}'
-    
+
     logger = TensorBoardLogger(LOG_PATH, name=model_name, version=version_str)
 
     early_stop_callback = EarlyStopping(

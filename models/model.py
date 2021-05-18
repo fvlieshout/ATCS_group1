@@ -1,6 +1,6 @@
 import numpy as np
 import pytorch_lightning as pl
-from models.pure_graph_encoder import PureGraphEncoder
+from models.glove_graph_encoder import GloveGraphEncoder
 from models.roberta_encoder import RobertaEncoder
 from models.roberta_graph_encoder import RobertaGraphEncoder
 from numpy.lib.arraysetops import isin
@@ -34,8 +34,9 @@ class DocumentClassifier(pl.LightningModule):
             self.model = load_pretrained_encoder(model_hparams['checkpoint'])
         elif model_name == 'roberta':
             self.model = RobertaEncoder()
-        elif model_name == 'pure_gnn':
-            self.model = PureGraphEncoder(model_hparams['gnn_output_dim'], roberta_output_dim, model_hparams['gnn_layer_name'])
+        elif model_name == 'glove_gnn':
+            self.model = GloveGraphEncoder(
+                model_hparams['doc_dim'], model_hparams['word_dim'], roberta_output_dim, model_hparams['gnn_layer_name'])
         elif model_name == 'roberta_gnn':
             self.model = RobertaGraphEncoder(roberta_output_dim, roberta_output_dim, model_hparams['gnn_layer_name'])
         else:
@@ -122,6 +123,7 @@ class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
         if epoch <= self.warmup:
             lr_factor *= epoch * 1.0 / self.warmup
         return lr_factor
+
 
 def load_pretrained_encoder(checkpoint_path):
     module = DocumentClassifier.load_from_checkpoint(checkpoint_path)
