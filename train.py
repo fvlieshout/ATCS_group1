@@ -67,7 +67,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
     else:
         model = DocumentClassifier(model_params, optimizer_hparams)
 
-    test_acc, val_acc = evaluate(trainer, model, test_loader, val_loader)
+    # test_acc, val_acc = evaluate(trainer, model, test_loader, val_loader)
 
     # Training
     print('Fitting model ..........\n')
