@@ -24,7 +24,7 @@ SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
 def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, data_name,
-          resume, gnn_layer_name):
+          resume, gnn_layer_name, transfer):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if model_name not in SUPPORTED_MODELS:
@@ -49,13 +49,14 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
         'model': model_name,
         'gnn_layer_name': gnn_layer_name,
         'cf_hid_dim': cf_hidden_dim,
+        'checkpoint': resume,
         **additional_params
     }
 
-    trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, data_name)
+    trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, data_name, transfer)
 
     # optionally resume from a checkpoint
-    if resume is not None:
+    if not transfer and resume is not None:
         print(f'=> intending to resume from checkpoint')
         if os.path.isfile(resume):
             print(f"=> loading checkpoint '{resume}'")
@@ -65,6 +66,8 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
             raise ValueError(f"No checkpoint found at '{resume}'!")
     else:
         model = DocumentClassifier(model_params, optimizer_hparams)
+
+    test_acc, val_acc = evaluate(trainer, model, test_loader, val_loader)
 
     # Training
     print('Fitting model ..........\n')
@@ -117,12 +120,16 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
     return test_accuracy, val_accuracy
 
 
-def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmup, seed, dataset):
+def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmup, seed, dataset, transfer):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
     os.makedirs(LOG_PATH, exist_ok=True)
 
+    if transfer:
+        model_name = f'{model_name}-transfer'
+    
     version_str = f'dname={dataset}_seed={seed}_lr={l_rate}_wdec={weight_decay}_wsteps={warmup}'
+    
     logger = TensorBoardLogger(LOG_PATH, name=model_name, version=version_str)
 
     early_stop_callback = EarlyStopping(
@@ -153,7 +160,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--epochs', dest='epochs', type=int, default=50)
     parser.add_argument('--patience', dest='patience', type=int, default=10)
-    parser.add_argument('--batch-size', dest='batch_size', type=int, default=1)
+    parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
     parser.add_argument('--lr', dest='l_rate', type=float, default=0.01)
     parser.add_argument("--w-decay", dest='w_decay', type=float, default=2e-3,
                         help="Weight decay for L2 regularization of optimizer AdamW")
@@ -174,6 +181,7 @@ if __name__ == "__main__":
     parser.add_argument('--cf-hidden-dim', dest='cf_hidden_dim', type=int, default=512)
     parser.add_argument('--resume', default=None, type=str, metavar='PATH',
                         help='path to latest checkpoint (default: None)')
+    parser.add_argument('--transfer', dest='transfer', action='store_true', help='Transfer the model to new dataset.')
 
     params = vars(parser.parse_args())
 
@@ -190,5 +198,6 @@ if __name__ == "__main__":
         cf_hidden_dim=params["cf_hidden_dim"],
         data_name=params["dataset"],
         resume=params["resume"],
-        gnn_layer_name=params["gnn_layer_name"]
+        gnn_layer_name=params["gnn_layer_name"],
+        transfer=params["transfer"]
     )
