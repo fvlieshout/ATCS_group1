@@ -33,9 +33,9 @@ class DocumentClassifier(pl.LightningModule):
         if model_name == 'roberta':
             self.model = RobertaEncoder()
         elif model_name == 'pure_gnn':
-            self.model = PureGraphEncoder(model_hparams['gnn_output_dim'], roberta_output_dim)
+            self.model = PureGraphEncoder(model_hparams['gnn_output_dim'], roberta_output_dim, model_hparams['gnn_layer_name'])
         elif model_name == 'roberta_gnn':
-            self.model = RobertaGraphEncoder(roberta_output_dim, roberta_output_dim)
+            self.model = RobertaGraphEncoder(roberta_output_dim, roberta_output_dim, model_hparams['gnn_layer_name'])
         else:
             raise ValueError("Model type '%s' is not supported." % model_name)
 
