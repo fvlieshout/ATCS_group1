@@ -54,9 +54,12 @@ class RobertaGraphDataset(GraphDataset):
 
         with torch.no_grad():
             print('Generating document node features')
-            encodings = self._tokenizer(self._raw_texts, truncation=True, padding=True)['input_ids']
-            encodings = torch.tensor(encodings, dtype=torch.long, device=self._device)
-            features_docs = doc_embedder(encodings)[1]
+            for doc in self._raw_texts:
+                encoding = self._tokenizer(doc, truncation=True, padding=True)['input_ids']
+                encoding = torch.tensor(encoding, dtype=torch.long, device=self._device)
+                encoding = doc_embedder(encoding)[1]
+                features_docs.append(encoding)
+            features_docs = torch.stack(features_docs).to(self._device)
 
             print('Generating word node features')
             for token in self._tokens:
