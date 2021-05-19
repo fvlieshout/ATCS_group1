@@ -43,7 +43,8 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
 
     train_loader, val_loader, test_loader, additional_params = get_dataloaders(model_name, b_size, data_name)
 
-    optimizer_hparams = {"lr": l_rate, "weight_decay": w_decay, "warmup": warmup, "max_iters": len(train_loader)*epochs)}
+    optimizer_hparams = {"lr": l_rate, "weight_decay": w_decay, "warmup": warmup,
+                         "max_iters": len(train_loader) * epochs}
 
     model_params = {
         'model': model_name,
@@ -127,9 +128,9 @@ def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmu
 
     if transfer:
         model_name = f'{model_name}-transfer'
-    
+
     version_str = f'dname={dataset}_seed={seed}_lr={l_rate}_wdec={weight_decay}_wsteps={warmup}'
-    
+
     logger = TensorBoardLogger(LOG_PATH, name=model_name, version=version_str)
 
     early_stop_callback = EarlyStopping(
