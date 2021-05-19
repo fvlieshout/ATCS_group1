@@ -46,7 +46,6 @@ class DocumentClassifier(pl.LightningModule):
             raise ValueError("Model type '%s' is not supported." % model_name)
 
         if transfer:
-            # 'checkpoint' in model_hparams and model_hparams['checkpoint'] is not None:
             encoder = load_pretrained_encoder(checkpoint)
             self.model.load_state_dict(encoder)
         

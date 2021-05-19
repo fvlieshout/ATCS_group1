@@ -68,8 +68,6 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, c
     else:
         model = DocumentClassifier(model_params, optimizer_hparams, checkpoint=resume, transfer=transfer, h_search=h_search)
 
-    # test_acc, val_acc = evaluate(trainer, model, test_loader, val_loader)
-
     # Training
     print('Fitting model ..........\n')
     start = time.time()
