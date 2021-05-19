@@ -171,7 +171,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--dataset', dest='dataset', default='R8', choices=SUPPORTED_DATASETS,
                         help='Select the dataset you want to use.')
-    parser.add_argument('--model', dest='model', default='roberta_gnn', choices=SUPPORTED_MODELS,
+    parser.add_argument('--model', dest='model', default='roberta_pretrained_gnn', choices=SUPPORTED_MODELS,
                         help='Select the model you want to use.')
     parser.add_argument('--gnn-layer-name', dest='gnn_layer_name', default='GCNConv', choices=SUPPORTED_GNN_LAYERS,
                         help='Select the GNN layer you want to use.')
