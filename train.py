@@ -54,18 +54,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
     }
 
     trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, data_name, transfer)
-
-    # optionally resume from a checkpoint
-    if not transfer and checkpoint is not None:
-        print(f'=> intending to resume from checkpoint')
-        if os.path.isfile(checkpoint):
-            print(f"=> loading checkpoint '{checkpoint}'")
-            model = DocumentClassifier.load_from_checkpoint(checkpoint)
-            print(f"=> loaded checkpoint '{checkpoint}'\n")
-        else:
-            raise ValueError(f"No checkpoint found at '{checkpoint}'!")
-    else:
-        model = DocumentClassifier(model_params, optimizer_hparams)
+    model = DocumentClassifier(model_params, optimizer_hparams)
 
     # Training
     print('Fitting model ..........\n')
