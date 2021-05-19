@@ -86,8 +86,7 @@ class DocumentClassifier(pl.LightningModule):
             }
         ]
 
-        optimizer = AdamW(grouped_parameters, lr=self.hparams.optimizer_hparams['lr_enc'],
-                          weight_decay=self.hparams.optimizer_hparams['weight_decay_enc'])
+        optimizer = AdamW(grouped_parameters)
 
         self.lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=self.hparams.optimizer_hparams['warmup'],
                                                   max_iters=self.hparams.optimizer_hparams['max_iters'])
