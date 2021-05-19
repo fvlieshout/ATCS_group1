@@ -23,8 +23,8 @@ SUPPORTED_GNN_LAYERS = ['GCNConv', 'GraphConv']
 SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
-def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, cf_hidden_dim, data_name,
-          resume, gnn_layer_name, transfer, h_search):
+def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_decay_enc, w_decay_cl, warmup, cf_hidden_dim, data_name,
+          resume, gnn_layer_name, transfer, h_search, l_rate2):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if model_name not in SUPPORTED_MODELS:
@@ -32,8 +32,8 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, c
 
     print(
         f'Configuration:\n model_name: {model_name}\n data_name: {data_name}\n max epochs: {epochs}\n'
-        f' patience: {patience}\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n warmup: {warmup}\n '
-        f'weight_decay: {w_decay}\n cf_hidden_dim: {cf_hidden_dim}\n resume checkpoint: {resume}\n'
+        f' patience: {patience}\n seed: {seed}\n batch_size: {b_size}\n l_rate_enc: {l_rate_enc}\n l_rate_cl: {l_rate_cl}\n warmup: {warmup}\n '
+        f'weight_decay_enc: {w_decay_enc}\n weight_decay_cl: {w_decay_cl}\n cf_hidden_dim: {cf_hidden_dim}\n resume checkpoint: {resume}\n'
         f' h_search: {h_search}\n GNN layer: {gnn_layer_name}\n')
 
     pl.seed_everything(seed)
@@ -42,8 +42,10 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, c
 
     train_loader, val_loader, test_loader, additional_params = get_dataloaders(model_name, b_size, data_name)
 
-    optimizer_hparams = {"lr": l_rate,
-                         "weight_decay": w_decay,
+    optimizer_hparams = {"lr_enc": l_rate_enc,
+                         "lr_cl": l_rate_cl,
+                         "weight_decay_enc": w_decay_enc,
+                         "weight_decay_cl": w_decay_cl,
                          "warmup": warmup,
                          "max_iters": len(train_loader) * epochs}
 
@@ -54,7 +56,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, c
         **additional_params
     }
 
-    trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, data_name, transfer)
+    trainer = initialize_trainer(epochs, patience, model_name, l_rate_enc, l_rate_cl, w_decay_enc, w_decay_cl, warmup, seed, data_name, transfer)
 
     # optionally resume from a checkpoint
     if not transfer and resume is not None:
@@ -119,7 +121,7 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
     return test_accuracy, val_accuracy
 
 
-def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmup, seed, dataset, transfer):
+def initialize_trainer(epochs, patience, model_name, l_rate_enc, l_rate_cl, weight_decay_enc, weight_decay_cl, warmup, seed, dataset, transfer):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
     os.makedirs(LOG_PATH, exist_ok=True)
@@ -127,7 +129,7 @@ def initialize_trainer(epochs, patience, model_name, l_rate, weight_decay, warmu
     if transfer:
         model_name = f'{model_name}-transfer'
 
-    version_str = f'dname={dataset}_seed={seed}_lr={l_rate}_wdec={weight_decay}_wsteps={warmup}'
+    version_str = f'dname={dataset}_seed={seed}_lr-enc={l_rate_enc}_lr-cl={l_rate_cl}_wdec-enc={weight_decay_enc}_wdec-cl={weight_decay_cl}_wsteps={warmup}'
 
     logger = TensorBoardLogger(LOG_PATH, name=model_name, version=version_str)
 
@@ -160,9 +162,14 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', dest='epochs', type=int, default=50)
     parser.add_argument('--patience', dest='patience', type=int, default=10)
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
-    parser.add_argument('--lr', dest='l_rate', type=float, default=0.01)
-    parser.add_argument("--w-decay", dest='w_decay', type=float, default=2e-3,
-                        help="Weight decay for L2 regularization of optimizer AdamW")
+    parser.add_argument('--lr-enc', dest='l_rate_enc', type=float, default=0.01,
+                        help="Encoder learning rate.")
+    parser.add_argument('--lr-cl', dest='l_rate_cl', type=float, default=0.01,
+                        help="Classifier learning rate.")
+    parser.add_argument("--w-decay-enc", dest='w_decay_enc', type=float, default=2e-3,
+                        help="Encoder weight decay for L2 regularization of optimizer AdamW")
+    parser.add_argument("--w-decay-cl", dest='w_decay_cl', type=float, default=2e-3,
+                        help="Classifier weight decay for L2 regularization of optimizer AdamW")
     parser.add_argument("--warmup", dest='warmup', type=int, default=500,
                         help="Number of steps for which we do learning rate warmup.")
 
@@ -191,13 +198,16 @@ if __name__ == "__main__":
         epochs=params['epochs'],
         patience=params['patience'],
         b_size=params["batch_size"],
-        l_rate=params["l_rate"],
-        w_decay=params["w_decay"],
+        l_rate_enc=params["l_rate_enc"],
+        l_rate_cl=params["l_rate_cl"],
+        w_decay_enc=params["w_decay_enc"],
+        w_decay_cl=params["w_decay_cl"],
         warmup=params["warmup"],
         cf_hidden_dim=params["cf_hidden_dim"],
         data_name=params["dataset"],
         resume=params["resume"],
         gnn_layer_name=params["gnn_layer_name"],
         transfer=params["transfer"],
-        h_search=params["h_search"]
+        h_search=params["h_search"],
+        l_rate2 = 42,
     )

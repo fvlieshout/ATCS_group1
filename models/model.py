@@ -64,13 +64,22 @@ class DocumentClassifier(pl.LightningModule):
 
         def is_encoder(n): return n.startswith('model')
 
+        print(self.hparams.optimizer_hparams)
         grouped_parameters = [
-            {'params': [p for n, p in params if is_encoder(n)], 'lr': self.hparams.optimizer_hparams['lr']},
-            {'params': [p for n, p in params if not is_encoder(n)], 'lr': self.hparams.optimizer_hparams['lr'] * 100}
+            {
+                'params': [p for n, p in params if is_encoder(n)], 
+                'lr': self.hparams.optimizer_hparams['lr_enc'],
+                'weight_decay': self.hparams.optimizer_hparams["weight_decay_enc"]
+            },
+            {
+                'params': [p for n, p in params if not is_encoder(n)], 
+                'lr': self.hparams.optimizer_hparams['lr_cl'],
+                'weight_decay': self.hparams.optimizer_hparams["weight_decay_cl"]
+            }
         ]
 
-        optimizer = AdamW(grouped_parameters, lr=self.hparams.optimizer_hparams['lr'],
-                          weight_decay=self.hparams.optimizer_hparams['weight_decay'])
+        optimizer = AdamW(grouped_parameters, lr=self.hparams.optimizer_hparams['lr_enc'],
+                          weight_decay=self.hparams.optimizer_hparams['weight_decay_enc'])
 
         self.lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=self.hparams.optimizer_hparams['warmup'],
                                                   max_iters=self.hparams.optimizer_hparams['max_iters'])
