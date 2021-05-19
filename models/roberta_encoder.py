@@ -14,7 +14,7 @@ class RobertaEncoder(nn.Module):
 
         # freezing the encoder parameters from half of the layers
         encoder_layers = self.model.encoder.layer
-        for layer in encoder_layers[:len(encoder_layers) / 2]:
+        for layer in encoder_layers[:int(len(encoder_layers) / 2)]:
             for param in layer.parameters():
                 param.requires_grad = False
 
