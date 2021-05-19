@@ -35,4 +35,7 @@ class RobertaEncoder(nn.Module):
 
         # b_size x hid_size
         out = hidden_states[1]
-        return out, batch['labels']
+
+        labels = batch['labels'] if 'labels' in batch.keys() else None
+
+        return out, labels
