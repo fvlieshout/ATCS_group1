@@ -25,13 +25,17 @@ class RobertaDataset(Dataset):
 
         def collate_fn(batch):
             texts = [data["text"] for data in batch]
+            items = batch.tokenize(self._tokenizer, texts)
             labels = [data["label"] for data in batch]
-            encodings = self._tokenizer(texts, truncation=True, padding=True)
-            items = {key: torch.tensor(val) for key, val in encodings.items()}
             items["labels"] = torch.tensor(labels)
             return items
 
         return collate_fn
+
+    @staticmethod
+    def tokenize(tokenizer, texts):
+        encodings = tokenizer(texts, truncation=True, padding=True)
+        return {key: torch.tensor(val) for key, val in encodings.items()}
 
     def labels(self):
         """

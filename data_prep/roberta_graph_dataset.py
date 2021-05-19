@@ -8,7 +8,7 @@ import torch
 from torchtext.vocab import GloVe
 from transformers import RobertaModel
 
-from data_prep.graph_dataset import GraphDataset
+from data_prep.graph_dataset import GraphDataset, RobertaDataset
 from models.roberta_encoder import *
 
 
@@ -20,7 +20,7 @@ class RobertaGraphDataset(GraphDataset):
     def __init__(self, corpus, checkpoint):
         # this needs to be set BEFORE the constructor call, because the stuff in the super constructor needs this
         self.roberta_checkpoint = checkpoint
-        
+
         super(RobertaGraphDataset, self).__init__(corpus)
 
     def _generate_features(self):
@@ -42,9 +42,13 @@ class RobertaGraphDataset(GraphDataset):
             for i in range(num_batches):
                 max_docs = len(self._raw_texts) if i == num_batches - 1 else (i + 1) * batch_size
                 docs = self._raw_texts[i * batch_size:max_docs]
-                encoding = self._tokenizer(docs, truncation=True, padding=True)['input_ids']
-                encoding = torch.tensor(encoding, dtype=torch.long, device=self._device)
-                encoding = doc_embedder(encoding)[1]
+                
+                # encodings = self._tokenizer(docs, truncation=True, padding=True)
+                # items = {key: torch.tensor(val, dtype=torch.long, device=self._device) for key, val in encodings.items()}
+                # encoding = torch.tensor(encoding, dtype=torch.long, device=self._device)
+
+                items = RobertaDataset.tokenize(self._tokenizem, docs)
+                encoding = doc_embedder(items)
                 features_docs.append(encoding)
             features_docs = torch.cat(features_docs, dim=0).to(self._device)
 
@@ -63,19 +67,28 @@ class RobertaGraphDataset(GraphDataset):
             encoder (RobertaModel): Roberta encoder.
         """
 
+        encoder = RobertaEncoder()
+
+        # only disables dropout
+        encoder.model.eval()
+
+        # freeze everything
+        for n, param in encoder.named_parameters():
+            param.requires_grad = False
+
         if self.roberta_checkpoint is None:
             # use only pretrained roberta for the document embeddings
-            return RobertaModel.from_pretrained('roberta-base')
+            return encoder
 
         # use pretrained + fine tuned roberta for the document embeddings
+        encoder.load_state_dict(self.get_encoder_state_dict())
+
+        return encoder
+
+    def get_encoder_state_dict(self):
         encoder_state_dict = {}
         for layer_key, param in torch.load(self.roberta_checkpoint)['state_dict'].items():
             if layer_key.startswith("model"):
                 new_key = layer_key[layer_key.index(".") + 1:]
                 encoder_state_dict[new_key] = param
-
-        encoder = RobertaEncoder()
-        encoder.load_state_dict(encoder_state_dict)
-        for n, param in encoder.named_parameters():
-            param.requires_grad = False
-        return encoder
+        return encoder_state_dict
