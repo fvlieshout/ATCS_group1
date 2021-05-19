@@ -3,7 +3,7 @@ from transformers import RobertaModel
 
 
 class RobertaEncoder(nn.Module):
-    def __init__(self):
+    def __init__(self, h_search):
         super().__init__()
 
         # transformer_config = model_hparams['transformer_config']
@@ -12,9 +12,12 @@ class RobertaEncoder(nn.Module):
         # this model is in eval per default, we want to fine-tune it but only the top layers
         self.model.train()
 
-        # freezing the encoder parameters from half of the layers
+        # freezing the encoder parameters
         encoder_layers = self.model.encoder.layer
-        for layer in encoder_layers[:int(len(encoder_layers) / 2)]:
+
+        # freeze half if we are doing hyper parameter search
+        num_layers = int(len(encoder_layers) / 2) if h_search else -1
+        for layer in encoder_layers[:num_layers]:
             for param in layer.parameters():
                 param.requires_grad = False
 

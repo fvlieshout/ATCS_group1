@@ -30,13 +30,14 @@ class DocumentClassifier(pl.LightningModule):
 
         roberta_output_dim = 768
         model_name = model_hparams['model']
+
         if 'checkpoint' in model_hparams and model_hparams['checkpoint'] is not None:
             self.model = load_pretrained_encoder(model_hparams['checkpoint'])
             # unfreeze the encoder parameters
             for param in self.model.parameters():
                 param.requires_grad = True
         elif model_name == 'roberta':
-            self.model = RobertaEncoder()
+            self.model = RobertaEncoder(model_hparams['h_search'])
         elif model_name == 'pure_gnn':
             self.model = PureGraphEncoder(model_hparams['gnn_output_dim'], roberta_output_dim,
                                           model_hparams['gnn_layer_name'])
@@ -48,7 +49,6 @@ class DocumentClassifier(pl.LightningModule):
         cf_hidden_dim = model_hparams['cf_hid_dim']
 
         self.classifier = nn.Sequential(
-            # nn.Dropout(model_hparams['dropout']),     # TODO: maybe add later
             nn.Linear(roberta_output_dim, cf_hidden_dim),
             nn.ReLU(),
             nn.Linear(cf_hidden_dim, model_hparams['num_classes'])

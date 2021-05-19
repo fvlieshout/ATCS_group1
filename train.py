@@ -23,8 +23,8 @@ SUPPORTED_GNN_LAYERS = ['GCNConv', 'GraphConv']
 SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
-def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, data_name,
-          resume, gnn_layer_name, transfer):
+def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, cf_hidden_dim, data_name,
+          resume, gnn_layer_name, transfer, h_search):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if model_name not in SUPPORTED_MODELS:
@@ -33,9 +33,8 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
     print(
         f'Configuration:\n model_name: {model_name}\n data_name: {data_name}\n max epochs: {epochs}\n'
         f' patience: {patience}\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n warmup: {warmup}\n '
-        f'weight_decay: {w_decay}\n cf_hidden_dim: {cf_hidden_dim}\n resume checkpoint: {resume}\n')
-    if model_name in ['pure_gnn', 'roberta_gnn']:
-        print('GNN layer:', gnn_layer_name)
+        f'weight_decay: {w_decay}\n cf_hidden_dim: {cf_hidden_dim}\n resume checkpoint: {resume}\n'
+        f' h_search: {h_search}\n GNN layer: {gnn_layer_name}\n')
 
     pl.seed_everything(seed)
 
@@ -43,7 +42,9 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
 
     train_loader, val_loader, test_loader, additional_params = get_dataloaders(model_name, b_size, data_name)
 
-    optimizer_hparams = {"lr": l_rate, "weight_decay": w_decay, "warmup": warmup,
+    optimizer_hparams = {"lr": l_rate,
+                         "weight_decay": w_decay,
+                         "warmup": warmup,
                          "max_iters": len(train_loader) * epochs}
 
     model_params = {
@@ -51,6 +52,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
         'gnn_layer_name': gnn_layer_name,
         'cf_hid_dim': cf_hidden_dim,
         'checkpoint': resume,
+        'h_search': h_search,
         **additional_params
     }
 
@@ -167,8 +169,6 @@ if __name__ == "__main__":
                         help="Weight decay for L2 regularization of optimizer AdamW")
     parser.add_argument("--warmup", dest='warmup', type=int, default=500,
                         help="Number of steps for which we do learning rate warmup.")
-    parser.add_argument("--max-iters", dest='max_iters', type=int, default=2000,
-                        help="Max iterations for learning rate warmup.")
 
     # CONFIGURATION
 
@@ -183,6 +183,9 @@ if __name__ == "__main__":
     parser.add_argument('--resume', default=None, type=str, metavar='PATH',
                         help='path to latest checkpoint (default: None)')
     parser.add_argument('--transfer', dest='transfer', action='store_true', help='Transfer the model to new dataset.')
+    parser.add_argument('--h-search', dest='h_search', action='store_true', default=False,
+                        help='Flag for doing hyper parameter search (and freezing half of roberta layers) '
+                             'or doing full fine tuning.')
 
     params = vars(parser.parse_args())
 
@@ -195,10 +198,10 @@ if __name__ == "__main__":
         l_rate=params["l_rate"],
         w_decay=params["w_decay"],
         warmup=params["warmup"],
-        max_iters=params["max_iters"],
         cf_hidden_dim=params["cf_hidden_dim"],
         data_name=params["dataset"],
         resume=params["resume"],
         gnn_layer_name=params["gnn_layer_name"],
-        transfer=params["transfer"]
+        transfer=params["transfer"],
+        h_search=params["h_search"]
     )
