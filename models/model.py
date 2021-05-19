@@ -1,5 +1,6 @@
 import numpy as np
 import pytorch_lightning as pl
+import torch
 from models.pure_graph_encoder import PureGraphEncoder
 from models.roberta_encoder import RobertaEncoder
 from models.roberta_graph_encoder import RobertaGraphEncoder
@@ -12,7 +13,7 @@ from torch.optim import AdamW
 class DocumentClassifier(pl.LightningModule):
 
     # noinspection PyUnusedLocal
-    def __init__(self, model_hparams, optimizer_hparams):
+    def __init__(self, model_hparams, optimizer_hparams, checkpoint=None, transfer=False, h_search=False):
         """
         Inputs:
             model_hparams - Hyperparameters for the whole model, as dictionary. Also contains Roberta Configuration.
@@ -20,6 +21,9 @@ class DocumentClassifier(pl.LightningModule):
             weight decay, etc.
         """
         super().__init__()
+
+        if transfer and checkpoint is None:
+            raise ValueError("Missing checkpoint path.")
 
         # Variable to distinguish between validation and test mask in test_step
         self.test_val_mode = 'test'
@@ -31,14 +35,8 @@ class DocumentClassifier(pl.LightningModule):
         roberta_output_dim = 768
         model_name = model_hparams['model']
 
-        if 'checkpoint' in model_hparams and model_hparams['checkpoint'] is not None:
-            self.model = load_pretrained_encoder(model_hparams['checkpoint'])
-            ## unfreeze the encoder parameters
-            #for n, param in self.model.named_parameters():
-            #    print(n, param.requires_grad)
-            #    param.requires_grad = True
-        elif model_name == 'roberta':
-            self.model = RobertaEncoder(model_hparams['h_search'])
+        if model_name == 'roberta':
+            self.model = RobertaEncoder(h_search)
         elif model_name == 'pure_gnn':
             self.model = PureGraphEncoder(model_hparams['gnn_output_dim'], roberta_output_dim,
                                           model_hparams['gnn_layer_name'])
@@ -47,6 +45,11 @@ class DocumentClassifier(pl.LightningModule):
         else:
             raise ValueError("Model type '%s' is not supported." % model_name)
 
+        if transfer:
+            # 'checkpoint' in model_hparams and model_hparams['checkpoint'] is not None:
+            encoder = load_pretrained_encoder(checkpoint)
+            self.model.load_state_dict(encoder)
+        
         cf_hidden_dim = model_hparams['cf_hid_dim']
 
         self.classifier = nn.Sequential(
@@ -85,11 +88,6 @@ class DocumentClassifier(pl.LightningModule):
             batch         - Input batch, output of the training loader.
             batch_idx     - Index of the batch in the dataset (not needed here).
         """
-        # "batch" is the output of the training data loader
-        # print("REQUIRE GRAD")
-        # for n, p  in self.named_parameters():
-        #    print(n, p.requires_grad)
-
         out, labels = self.model(batch, mode='train')
         predictions = self.classifier(out)
         loss = self.loss_module(predictions, labels)
@@ -143,5 +141,11 @@ class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
 
 
 def load_pretrained_encoder(checkpoint_path):
-    module = DocumentClassifier.load_from_checkpoint(checkpoint_path)
-    return module.model
+    checkpoint = torch.load(checkpoint_path)
+    encoder_state_dict = {}
+    for layer, param in checkpoint["state_dict"].items():
+        if layer.startswith("model"):
+            new_layer = layer[layer.index(".")+1:]
+            encoder_state_dict[new_layer] = param
+
+    return encoder_state_dict    

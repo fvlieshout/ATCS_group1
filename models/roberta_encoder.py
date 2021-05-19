@@ -16,10 +16,11 @@ class RobertaEncoder(nn.Module):
         encoder_layers = self.model.encoder.layer
 
         # freeze half if we are doing hyper parameter search
-        num_layers = int(len(encoder_layers) / 2) if h_search else -1
-        for layer in encoder_layers[:num_layers]:
-            for param in layer.parameters():
-                param.requires_grad = False
+        if h_search:
+            for layer in encoder_layers[:int(len(encoder_layers) / 2)]:
+                for param in layer.parameters():
+                    param.requires_grad = False
+
 
     # noinspection PyUnusedLocal
     def forward(self, batch, **kwargs):
