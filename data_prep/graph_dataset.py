@@ -1,4 +1,10 @@
 import abc
+from collections import defaultdict
+
+import nltk
+
+nltk.download('punkt')
+from nltk import word_tokenize
 
 import torch_geometric.data as geom_data
 import torch
@@ -54,7 +60,8 @@ class GraphDataset(Dataset, GeometricDataset):
         self._labels = torch.full((len(iton),), -1, device=self._device)
         self._labels[:len(doc_labels)] = torch.tensor(doc_labels)
 
-        self._data = Data(edge_index=edge_index, edge_attr=edge_attr, y=self._labels)
+        self._data = Data(edge_index=edge_index, edge_attr=edge_attr, y=self._labels, num_nodes=self.num_nodes)
+        self._data.doc_features, self._data.word_features = self._generate_features()
         self._data.train_mask = train_mask
         self._data.val_mask = val_mask
         self._data.test_mask = test_mask
@@ -140,12 +147,26 @@ class GraphDataset(Dataset, GeometricDataset):
 
         return train_mask.bool(), val_mask.bool(), test_mask.bool()
 
-    @abc.abstractmethod
-    def _preprocess(self):
+    def _preprocess(self, lower_threshold=4, upper_threshold=50):
         """
         Preprocesses the corpus.
+        Returns:
+            tokenized_text (List): List of tokenized documents texts.
+            tokens (List): List of all tokens.
         """
-        raise NotImplementedError
+        tokenized_text = [word_tokenize(text.lower()) for text in self._raw_texts]
+
+        counter = defaultdict(lambda: 0)
+        for text in tokenized_text:
+            for token in set(text):
+                counter[token] += 1
+
+        tokenized_text = [
+            [token for token in text if counter[token] >= lower_threshold and counter[token] < upper_threshold]
+            for text in tokenized_text]
+        tokens = list(set([token for text in tokenized_text for token in text]))
+
+        return tokenized_text, tokens
 
     @abc.abstractmethod
     def _generate_features(self):
