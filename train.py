@@ -43,7 +43,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
 
     train_loader, val_loader, test_loader, additional_params = get_dataloaders(model_name, b_size, data_name)
 
-    optimizer_hparams = {"lr": l_rate, "weight_decay": w_decay, "warmup": warmup, "max_iters": max_iters}
+    optimizer_hparams = {"lr": l_rate, "weight_decay": w_decay, "warmup": warmup, "max_iters": int(len(train_loader*epochs))}
 
     model_params = {
         'model': model_name,
