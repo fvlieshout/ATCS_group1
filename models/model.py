@@ -64,7 +64,6 @@ class DocumentClassifier(pl.LightningModule):
 
         def is_encoder(n): return n.startswith('model')
 
-        print(self.hparams.optimizer_hparams)
         grouped_parameters = [
             {
                 'params': [p for n, p in params if is_encoder(n)], 
