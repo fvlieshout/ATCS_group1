@@ -8,7 +8,8 @@ import torch
 from torchtext.vocab import GloVe
 from transformers import RobertaModel
 
-from data_prep.graph_dataset import GraphDataset, RobertaDataset
+from data_prep.graph_dataset import GraphDataset
+from data_prep.roberta_dataset import RobertaDataset
 from models.roberta_encoder import *
 
 
