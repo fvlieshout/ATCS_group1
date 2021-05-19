@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
 import torch
 from data_prep.data_utils import get_dataloaders
-from models.model import DocumentClassifier
+from models.document_classifier import DocumentClassifier
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 
@@ -18,13 +18,13 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 LOG_PATH = "./logs/"
 
-SUPPORTED_MODELS = ['roberta', 'glove_gnn', 'roberta_gnn']
+SUPPORTED_MODELS = ['roberta', 'glove_gnn', 'roberta_gnn', 'roberta_pretrained_gnn']
 SUPPORTED_GNN_LAYERS = ['GCNConv', 'GraphConv']
 SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
 def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, max_iters, cf_hidden_dim, data_name,
-          resume, gnn_layer_name, transfer):
+          checkpoint, gnn_layer_name, transfer):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if model_name not in SUPPORTED_MODELS:
@@ -33,7 +33,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
     print(
         f'Configuration:\n model_name: {model_name}\n data_name: {data_name}\n max epochs: {epochs}\n'
         f' patience: {patience}\n seed: {seed}\n batch_size: {b_size}\n l_rate: {l_rate}\n warmup: {warmup}\n '
-        f'weight_decay: {w_decay}\n cf_hidden_dim: {cf_hidden_dim}\n resume checkpoint: {resume}\n')
+        f'weight_decay: {w_decay}\n cf_hidden_dim: {cf_hidden_dim}\n checkpoint: {checkpoint}\n')
     if model_name in ['pure_gnn', 'roberta_gnn']:
         print('GNN layer:', gnn_layer_name)
 
@@ -41,7 +41,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
 
     # the data preprocessing
 
-    train_loader, val_loader, test_loader, additional_params = get_dataloaders(model_name, b_size, data_name)
+    train_loader, val_loader, test_loader, additional_params = get_dataloaders(model_name, b_size, data_name, checkpoint)
 
     optimizer_hparams = {"lr": l_rate, "weight_decay": w_decay, "warmup": warmup, "max_iters": max_iters}
 
@@ -49,25 +49,23 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
         'model': model_name,
         'gnn_layer_name': gnn_layer_name,
         'cf_hid_dim': cf_hidden_dim,
-        'checkpoint': resume,
+        'checkpoint': checkpoint,
         **additional_params
     }
 
     trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, data_name, transfer)
 
     # optionally resume from a checkpoint
-    if not transfer and resume is not None:
+    if not transfer and checkpoint is not None:
         print(f'=> intending to resume from checkpoint')
-        if os.path.isfile(resume):
-            print(f"=> loading checkpoint '{resume}'")
-            model = DocumentClassifier.load_from_checkpoint(resume)
-            print(f"=> loaded checkpoint '{resume}'\n")
+        if os.path.isfile(checkpoint):
+            print(f"=> loading checkpoint '{checkpoint}'")
+            model = DocumentClassifier.load_from_checkpoint(checkpoint)
+            print(f"=> loaded checkpoint '{checkpoint}'\n")
         else:
-            raise ValueError(f"No checkpoint found at '{resume}'!")
+            raise ValueError(f"No checkpoint found at '{checkpoint}'!")
     else:
         model = DocumentClassifier(model_params, optimizer_hparams)
-
-    test_acc, val_acc = evaluate(trainer, model, test_loader, val_loader)
 
     # Training
     print('Fitting model ..........\n')
@@ -179,8 +177,8 @@ if __name__ == "__main__":
                         help='Select the GNN layer you want to use.')
     parser.add_argument('--seed', dest='seed', type=int, default=1234)
     parser.add_argument('--cf-hidden-dim', dest='cf_hidden_dim', type=int, default=512)
-    parser.add_argument('--resume', default=None, type=str, metavar='PATH',
-                        help='path to latest checkpoint (default: None)')
+    parser.add_argument('--checkpoint', default=None, type=str, metavar='PATH',
+                        help='Path to latest checkpoint (default: None)')
     parser.add_argument('--transfer', dest='transfer', action='store_true', help='Transfer the model to new dataset.')
 
     params = vars(parser.parse_args())
@@ -197,7 +195,7 @@ if __name__ == "__main__":
         max_iters=params["max_iters"],
         cf_hidden_dim=params["cf_hidden_dim"],
         data_name=params["dataset"],
-        resume=params["resume"],
+        checkpoint=params["checkpoint"],
         gnn_layer_name=params["gnn_layer_name"],
         transfer=params["transfer"]
     )

@@ -1,13 +1,13 @@
 from data_prep.agnews_data import *
+from data_prep.glove_graph_dataset import *
 from data_prep.graph_dataset import *
 from data_prep.imdb_data import *
-from data_prep.glove_graph_dataset import *
 from data_prep.reuters_data import *
 from data_prep.roberta_dataset import *
 from data_prep.roberta_graph_dataset import *
 
 
-def get_dataloaders(model, b_size, data_name):
+def get_dataloaders(model, b_size, data_name, checkpoint=None):
     corpus = get_data(data_name)
     additional_params = {}
 
@@ -24,8 +24,8 @@ def get_dataloaders(model, b_size, data_name):
         dataset = GloveGraphDataset(corpus)
         additional_params['doc_dim'] = dataset.doc_dim
         additional_params['word_dim'] = dataset.word_dim
-    elif model == 'roberta_gnn':
-        dataset = RobertaGraphDataset(corpus)
+    elif model in ['roberta_gnn', 'roberta_pretrained_gnn']:
+        dataset = RobertaGraphDataset(corpus, checkpoint)
     else:
         raise ValueError("Model type '%s' is not supported." % model)
 
