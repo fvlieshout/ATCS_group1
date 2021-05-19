@@ -4,6 +4,7 @@ from models.glove_graph_encoder import GloveGraphEncoder
 from models.roberta_encoder import RobertaEncoder
 from models.roberta_graph_encoder import RobertaGraphEncoder
 from numpy.lib.arraysetops import isin
+import torch
 from torch import nn
 from torch import optim
 from torch.optim import AdamW
@@ -12,7 +13,7 @@ from torch.optim import AdamW
 class DocumentClassifier(pl.LightningModule):
 
     # noinspection PyUnusedLocal
-    def __init__(self, model_hparams, optimizer_hparams):
+    def __init__(self, model_hparams, optimizer_hparams, checkpoint=None, transfer=False, h_search=False):
         """
         Inputs:
             model_hparams - Hyperparameters for the whole model, as dictionary. Also contains Roberta Configuration.
@@ -20,6 +21,9 @@ class DocumentClassifier(pl.LightningModule):
             weight decay, etc.
         """
         super().__init__()
+
+        if transfer and checkpoint is None:
+            raise ValueError("Missing checkpoint path.")
 
         # Variable to distinguish between validation and test mask in test_step
         self.test_val_mode = 'test'
@@ -30,10 +34,9 @@ class DocumentClassifier(pl.LightningModule):
 
         roberta_output_dim = 768
         model_name = model_hparams['model']
-        if 'checkpoint' in model_hparams and model_hparams['checkpoint'] is not None:
-            self.model = load_pretrained_encoder(model_hparams['checkpoint'])
-        elif model_name == 'roberta':
-            self.model = RobertaEncoder()
+
+        if model_name == 'roberta':
+            self.model = RobertaEncoder(h_search)
         elif model_name == 'glove_gnn':
             self.model = GloveGraphEncoder(
                 model_hparams['doc_dim'], model_hparams['word_dim'], roberta_output_dim, model_hparams['gnn_layer_name'])
@@ -42,10 +45,13 @@ class DocumentClassifier(pl.LightningModule):
         else:
             raise ValueError("Model type '%s' is not supported." % model_name)
 
+        if transfer:
+            encoder = load_pretrained_encoder(checkpoint)
+            self.model.load_state_dict(encoder)
+        
         cf_hidden_dim = model_hparams['cf_hid_dim']
 
         self.classifier = nn.Sequential(
-            # nn.Dropout(model_hparams['dropout']),     # TODO: maybe add later
             nn.Linear(roberta_output_dim, cf_hidden_dim),
             nn.ReLU(),
             nn.Linear(cf_hidden_dim, model_hparams['num_classes'])
@@ -54,8 +60,33 @@ class DocumentClassifier(pl.LightningModule):
         self.lr_scheduler = None
 
     def configure_optimizers(self):
-        optimizer = AdamW(self.parameters(), lr=self.hparams.optimizer_hparams['lr'],
-                          weight_decay=self.hparams.optimizer_hparams['weight_decay'])
+        lr_enc = self.hparams.optimizer_hparams['lr_enc']
+        lr_cl = self.hparams.optimizer_hparams['lr_cl']
+        if lr_cl < 0: # classifier learning rate not specified
+            lr_cl = lr_enc
+        
+        weight_decay_enc = self.hparams.optimizer_hparams["weight_decay_enc"]
+        weight_decay_cl = self.hparams.optimizer_hparams["weight_decay_cl"]
+        if weight_decay_cl < 0: # classifier weight decay not specified
+            weight_decay_cl = weight_decay_enc
+
+        params = list(self.named_parameters())
+        def is_encoder(n): return n.startswith('model')
+        
+        grouped_parameters = [
+            {
+                'params': [p for n, p in params if is_encoder(n)], 
+                'lr': lr_enc,
+                'weight_decay': weight_decay_enc
+            },
+            {
+                'params': [p for n, p in params if not is_encoder(n)], 
+                'lr': lr_cl,
+                'weight_decay': weight_decay_cl
+            }
+        ]
+
+        optimizer = AdamW(grouped_parameters)
 
         self.lr_scheduler = CosineWarmupScheduler(optimizer=optimizer, warmup=self.hparams.optimizer_hparams['warmup'],
                                                   max_iters=self.hparams.optimizer_hparams['max_iters'])
@@ -72,7 +103,6 @@ class DocumentClassifier(pl.LightningModule):
             batch         - Input batch, output of the training loader.
             batch_idx     - Index of the batch in the dataset (not needed here).
         """
-        # "batch" is the output of the training data loader
         out, labels = self.model(batch, mode='train')
         predictions = self.classifier(out)
         loss = self.loss_module(predictions, labels)
@@ -115,17 +145,23 @@ class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
         super().__init__(optimizer)
 
     def get_lr(self):
-        lr_factor = self.get_lr_factor(epoch=self.last_epoch)
+        lr_factor = self.get_lr_factor()
         return [base_lr * lr_factor for base_lr in self.base_lrs]
 
-    def get_lr_factor(self, epoch):
-        lr_factor = 0.5 * (1 + np.cos(np.pi * epoch / self.max_num_iters))
-        if epoch <= self.warmup:
-            lr_factor *= epoch * 1.0 / self.warmup
+    def get_lr_factor(self):
+        current_step = self.last_epoch
+        lr_factor = 0.5 * (1 + np.cos(np.pi * current_step / self.max_num_iters))
+        if current_step <= self.warmup:
+            lr_factor *= current_step * 1.0 / self.warmup
         return lr_factor
 
 
 def load_pretrained_encoder(checkpoint_path):
-    module = DocumentClassifier.load_from_checkpoint(checkpoint_path)
-    module.freeze()
-    return module.model
+    checkpoint = torch.load(checkpoint_path)
+    encoder_state_dict = {}
+    for layer, param in checkpoint["state_dict"].items():
+        if layer.startswith("model"):
+            new_layer = layer[layer.index(".")+1:]
+            encoder_state_dict[new_layer] = param
+
+    return encoder_state_dict    
