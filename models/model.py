@@ -60,20 +60,29 @@ class DocumentClassifier(pl.LightningModule):
         self.lr_scheduler = None
 
     def configure_optimizers(self):
+        lr_enc = self.hparams.optimizer_hparams['lr_enc']
+        lr_cl = self.hparams.optimizer_hparams['lr_cl']
+        if lr_cl < 0: # classifier learning rate not specified
+            lr_cl = lr_enc
+        
+        weight_decay_enc = self.hparams.optimizer_hparams["weight_decay_enc"]
+        weight_decay_cl = self.hparams.optimizer_hparams["weight_decay_cl"]
+        if weight_decay_cl < 0: # classifier weight decay not specified
+            weight_decay_cl = weight_decay_enc
+
         params = list(self.named_parameters())
-
         def is_encoder(n): return n.startswith('model')
-
+        
         grouped_parameters = [
             {
                 'params': [p for n, p in params if is_encoder(n)], 
-                'lr': self.hparams.optimizer_hparams['lr_enc'],
-                'weight_decay': self.hparams.optimizer_hparams["weight_decay_enc"]
+                'lr': lr_enc,
+                'weight_decay': weight_decay_enc
             },
             {
                 'params': [p for n, p in params if not is_encoder(n)], 
-                'lr': self.hparams.optimizer_hparams['lr_cl'],
-                'weight_decay': self.hparams.optimizer_hparams["weight_decay_cl"]
+                'lr': lr_cl,
+                'weight_decay': weight_decay_cl
             }
         ]
 

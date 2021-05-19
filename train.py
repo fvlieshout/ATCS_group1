@@ -24,7 +24,7 @@ SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
 def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_decay_enc, w_decay_cl, warmup, cf_hidden_dim, data_name,
-          resume, gnn_layer_name, transfer, h_search, l_rate2):
+          resume, gnn_layer_name, transfer, h_search):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if model_name not in SUPPORTED_MODELS:
@@ -164,11 +164,11 @@ if __name__ == "__main__":
     parser.add_argument('--batch-size', dest='batch_size', type=int, default=64)
     parser.add_argument('--lr-enc', dest='l_rate_enc', type=float, default=0.01,
                         help="Encoder learning rate.")
-    parser.add_argument('--lr-cl', dest='l_rate_cl', type=float, default=0.01,
+    parser.add_argument('--lr-cl', dest='l_rate_cl', type=float, default=-1,
                         help="Classifier learning rate.")
     parser.add_argument("--w-decay-enc", dest='w_decay_enc', type=float, default=2e-3,
                         help="Encoder weight decay for L2 regularization of optimizer AdamW")
-    parser.add_argument("--w-decay-cl", dest='w_decay_cl', type=float, default=2e-3,
+    parser.add_argument("--w-decay-cl", dest='w_decay_cl', type=float, default=-1,
                         help="Classifier weight decay for L2 regularization of optimizer AdamW")
     parser.add_argument("--warmup", dest='warmup', type=int, default=500,
                         help="Number of steps for which we do learning rate warmup.")
@@ -209,5 +209,4 @@ if __name__ == "__main__":
         gnn_layer_name=params["gnn_layer_name"],
         transfer=params["transfer"],
         h_search=params["h_search"],
-        l_rate2 = 42,
     )
