@@ -41,7 +41,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
 
     # the data preprocessing
 
-    train_loader, val_loader, test_loader, additional_params = get_dataloaders(model_name, b_size, data_name, checkpoint)
+    train_loader, val_loader, test_loader, add_params = get_dataloaders(model_name, b_size, data_name, checkpoint)
 
     optimizer_hparams = {"lr": l_rate, "weight_decay": w_decay, "warmup": warmup, "max_iters": max_iters}
 
@@ -50,7 +50,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate, w_decay, warmup, m
         'gnn_layer_name': gnn_layer_name,
         'cf_hid_dim': cf_hidden_dim,
         'checkpoint': checkpoint,
-        **additional_params
+        **add_params
     }
 
     trainer = initialize_trainer(epochs, patience, model_name, l_rate, w_decay, warmup, seed, data_name, transfer)
