@@ -24,7 +24,7 @@ def get_dataloaders(model, b_size, data_name, checkpoint=None):
         dataset = GloveGraphDataset(corpus)
         additional_params['doc_dim'] = dataset.doc_dim
         additional_params['word_dim'] = dataset.word_dim
-    elif model in ['roberta_gnn', 'roberta_pretrained_gnn']:
+    elif model in ['roberta_pretrained_gnn', 'roberta_finetuned_gnn']:
         dataset = RobertaGraphDataset(corpus, checkpoint)
     else:
         raise ValueError("Model type '%s' is not supported." % model)

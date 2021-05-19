@@ -30,6 +30,7 @@ class DocumentClassifier(pl.LightningModule):
 
         roberta_output_dim = 768
         model_name = model_hparams['model']
+
         if 'checkpoint' in model_hparams and model_hparams['checkpoint'] is not None:
             self.model = load_pretrained_encoder(model_hparams['checkpoint'])
         elif model_name == 'roberta':
@@ -37,7 +38,7 @@ class DocumentClassifier(pl.LightningModule):
         elif model_name == 'glove_gnn':
             self.model = GloveGraphEncoder(
                 model_hparams['doc_dim'], model_hparams['word_dim'], roberta_output_dim, model_hparams['gnn_layer_name'])
-        elif model_name in ['roberta_gnn', 'roberta_pretrained_gnn']:
+        elif model_name in ['roberta_pretrained_gnn', 'roberta_finetuned_gnn']:
             self.model = RobertaGraphEncoder(roberta_output_dim, roberta_output_dim, model_hparams['gnn_layer_name'])
         else:
             raise ValueError("Model type '%s' is not supported." % model_name)
