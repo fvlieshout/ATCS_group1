@@ -32,9 +32,10 @@ class DocumentClassifier(pl.LightningModule):
         model_name = model_hparams['model']
         if 'checkpoint' in model_hparams and model_hparams['checkpoint'] is not None:
             self.model = load_pretrained_encoder(model_hparams['checkpoint'])
-            # unfreeze the encoder parameters
-            for param in self.model.parameters():
-                param.requires_grad = True
+            ## unfreeze the encoder parameters
+            #for n, param in self.model.named_parameters():
+            #    print(n, param.requires_grad)
+            #    param.requires_grad = True
         elif model_name == 'roberta':
             self.model = RobertaEncoder()
         elif model_name == 'pure_gnn':
