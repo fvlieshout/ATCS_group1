@@ -30,11 +30,10 @@ def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_d
     if model_name not in SUPPORTED_MODELS:
         raise ValueError("Model type '%s' is not supported." % model_name)
 
-    print(
-        f'Configuration:\n model_name: {model_name}\n data_name: {data_name}\n max epochs: {epochs}\n'
-        f' patience: {patience}\n seed: {seed}\n batch_size: {b_size}\n l_rate_enc: {l_rate_enc}\n l_rate_cl: {l_rate_cl}\n warmup: {warmup}\n '
-        f'weight_decay_enc: {w_decay_enc}\n weight_decay_cl: {w_decay_cl}\n cf_hidden_dim: {cf_hidden_dim}\n checkpoint: {checkpoint}\n'
-        f' h_search: {h_search}\n GNN layer: {gnn_layer_name}\n')
+    print(f'Configuration:\n model_name: {model_name}\n data_name: {data_name}\n max epochs: {epochs}\n  patience:'
+          f' {patience}\n seed: {seed}\n batch_size: {b_size}\n l_rate_enc: {l_rate_enc}\n l_rate_cl: {l_rate_cl}\n'
+          f' warmup: {warmup}\n weight_decay_enc: {w_decay_enc}\n weight_decay_cl: {w_decay_cl}\n  cf_hidden_dim: '
+          f'{cf_hidden_dim}\n checkpoint: {checkpoint}\n h_search: {h_search}\n GNN layer: {gnn_layer_name}\n')
 
     pl.seed_everything(seed)
 
@@ -58,7 +57,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_d
 
     trainer = initialize_trainer(epochs, patience, model_name, l_rate_enc, l_rate_cl, w_decay_enc, w_decay_cl, warmup,
                                  seed, data_name, transfer)
-    model = DocumentClassifier(model_params, optimizer_hparams, checkpoint=resume, transfer=transfer, h_search=h_search)
+    model = DocumentClassifier(model_params, optimizer_hparams, checkpoint, transfer, h_search)
 
     # Training
     print('Fitting model ..........\n')

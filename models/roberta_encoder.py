@@ -3,7 +3,7 @@ from transformers import RobertaModel
 
 
 class RobertaEncoder(nn.Module):
-    def __init__(self, h_search):
+    def __init__(self, h_search=False):
         super().__init__()
 
         # transformer_config = model_hparams['transformer_config']
@@ -16,11 +16,10 @@ class RobertaEncoder(nn.Module):
         if h_search:
             # freezing the encoder parameters
             encoder_layers = self.model.encoder.layer
-            
+
             for layer in encoder_layers[:int(len(encoder_layers) / 2)]:
                 for param in layer.parameters():
                     param.requires_grad = False
-
 
     # noinspection PyUnusedLocal
     def forward(self, batch, **kwargs):
