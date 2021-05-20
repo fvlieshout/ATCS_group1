@@ -132,10 +132,10 @@ def initialize_trainer(epochs, patience, model_name, l_rate_enc, l_rate_cl, weig
     )
 
     trainer = pl.Trainer(logger=logger,
-                         checkpoint_callback=model_checkpoint,
+                         checkpoint_callback=True,
                          gpus=1 if torch.cuda.is_available() else 0,
                          max_epochs=epochs,
-                         callbacks=[early_stop_callback],
+                         callbacks=[early_stop_callback, model_checkpoint],
                          progress_bar_refresh_rate=1)
 
     # Optional logging argument that we don't need
@@ -181,22 +181,3 @@ if __name__ == "__main__":
                              'or doing full fine tuning.')
 
     params = vars(parser.parse_args())
-
-    train(
-        model_name=params['model'],
-        seed=params['seed'],
-        epochs=params['epochs'],
-        patience=params['patience'],
-        b_size=params["batch_size"],
-        l_rate_enc=params["l_rate_enc"],
-        l_rate_cl=params["l_rate_cl"],
-        w_decay_enc=params["w_decay_enc"],
-        w_decay_cl=params["w_decay_cl"],
-        warmup=params["warmup"],
-        cf_hidden_dim=params["cf_hidden_dim"],
-        data_name=params["dataset"],
-        checkpoint=params["checkpoint"],
-        gnn_layer_name=params["gnn_layer_name"],
-        transfer=params["transfer"],
-        h_search=params["h_search"],
-    )
