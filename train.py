@@ -132,10 +132,10 @@ def initialize_trainer(epochs, patience, model_name, l_rate_enc, l_rate_cl, weig
     )
 
     trainer = pl.Trainer(logger=logger,
-                         checkpoint_callback=True,
+                         checkpoint_callback=model_checkpoint,
                          gpus=1 if torch.cuda.is_available() else 0,
                          max_epochs=epochs,
-                         callbacks=[early_stop_callback, model_checkpoint],
+                         callbacks=[early_stop_callback],
                          progress_bar_refresh_rate=1)
 
     # Optional logging argument that we don't need
