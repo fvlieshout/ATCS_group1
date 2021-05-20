@@ -24,7 +24,7 @@ SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
 def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_decay_enc, w_decay_cl, warmup,
-          cf_hidden_dim, data_name, checkpoint, gnn_layer_name, transfer, h_search):
+          cf_hidden_dim, data_name, checkpoint, gnn_layer_name, transfer, h_search, eval=False):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if model_name not in SUPPORTED_MODELS:
@@ -59,21 +59,28 @@ def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_d
                                  seed, data_name, transfer)
     model = DocumentClassifier(model_params, optimizer_hparams, checkpoint, transfer, h_search)
 
-    # Training
-    print('Fitting model ..........\n')
-    start = time.time()
-    trainer.fit(model, train_loader, val_loader)
+    if not eval:
+        # Training
+        print('Fitting model ..........\n')
+        start = time.time()
+        trainer.fit(model, train_loader, val_loader)
 
-    end = time.time()
-    elapsed = end - start
-    print(f'\nRequired time for training: {int(elapsed / 60)} minutes.\n')
+        end = time.time()
+        elapsed = end - start
+        print(f'\nRequired time for training: {int(elapsed / 60)} minutes.\n')
 
-    # Testing
-    # Load best checkpoint after training
-    best_model_path = trainer.checkpoint_callback.best_model_path
-    print(f'Best model path: {best_model_path}')
+        # Load best checkpoint after training
+        model_path = trainer.checkpoint_callback.best_model_path
+        print(f'Best model path: {model_path}')
 
-    model = model.load_from_checkpoint(best_model_path)
+    elif checkpoint is not None:
+        # Testing
+        model_path = checkpoint
+        print(f'Evaluation model with path: {model_path}')
+    else:
+        raise ValueError("Wanting to evaluate, but can't as checkpoint is None.")
+
+    model = model.load_from_checkpoint(model_path)
     test_acc, val_acc = evaluate(trainer, model, test_loader, val_loader)
 
     # We want to save the whole model, because we fine-tune anyways!
