@@ -1,6 +1,6 @@
 import argparse
 
-from train import train
+from train import *
 
 
 def evaluate(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_decay_enc, w_decay_cl, warmup,
