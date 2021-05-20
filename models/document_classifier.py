@@ -39,8 +39,9 @@ class DocumentClassifier(pl.LightningModule):
             self.model = RobertaEncoder(h_search)
         elif model_name == 'glove_gnn':
             self.model = GloveGraphEncoder(
-                model_hparams['doc_dim'], model_hparams['word_dim'], roberta_output_dim, model_hparams['gnn_layer_name'])
-        elif model_name == 'roberta_gnn':
+                model_hparams['doc_dim'], model_hparams['word_dim'], roberta_output_dim,
+                model_hparams['gnn_layer_name'])
+        elif model_name in ['roberta_pretrained_gnn', 'roberta_finetuned_gnn']:
             self.model = RobertaGraphEncoder(roberta_output_dim, roberta_output_dim, model_hparams['gnn_layer_name'])
         else:
             raise ValueError("Model type '%s' is not supported." % model_name)
@@ -48,7 +49,7 @@ class DocumentClassifier(pl.LightningModule):
         if transfer:
             encoder = load_pretrained_encoder(checkpoint)
             self.model.load_state_dict(encoder)
-        
+
         cf_hidden_dim = model_hparams['cf_hid_dim']
 
         self.classifier = nn.Sequential(
@@ -62,25 +63,27 @@ class DocumentClassifier(pl.LightningModule):
     def configure_optimizers(self):
         lr_enc = self.hparams.optimizer_hparams['lr_enc']
         lr_cl = self.hparams.optimizer_hparams['lr_cl']
-        if lr_cl < 0: # classifier learning rate not specified
+        if lr_cl < 0:  # classifier learning rate not specified
             lr_cl = lr_enc
-        
+
         weight_decay_enc = self.hparams.optimizer_hparams["weight_decay_enc"]
         weight_decay_cl = self.hparams.optimizer_hparams["weight_decay_cl"]
-        if weight_decay_cl < 0: # classifier weight decay not specified
+        if weight_decay_cl < 0:  # classifier weight decay not specified
             weight_decay_cl = weight_decay_enc
 
         params = list(self.named_parameters())
-        def is_encoder(n): return n.startswith('model')
-        
+
+        def is_encoder(n):
+            return n.startswith('model')
+
         grouped_parameters = [
             {
-                'params': [p for n, p in params if is_encoder(n)], 
+                'params': [p for n, p in params if is_encoder(n)],
                 'lr': lr_enc,
                 'weight_decay': weight_decay_enc
             },
             {
-                'params': [p for n, p in params if not is_encoder(n)], 
+                'params': [p for n, p in params if not is_encoder(n)],
                 'lr': lr_cl,
                 'weight_decay': weight_decay_cl
             }
@@ -161,7 +164,7 @@ def load_pretrained_encoder(checkpoint_path):
     encoder_state_dict = {}
     for layer, param in checkpoint["state_dict"].items():
         if layer.startswith("model"):
-            new_layer = layer[layer.index(".")+1:]
+            new_layer = layer[layer.index(".") + 1:]
             encoder_state_dict[new_layer] = param
 
-    return encoder_state_dict    
+    return encoder_state_dict
