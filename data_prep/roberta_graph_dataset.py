@@ -45,7 +45,7 @@ class RobertaGraphDataset(GraphDataset):
                 docs = self._raw_texts[i * batch_size:max_docs]
                 encodings = self._tokenizer(docs, truncation=True, padding=True)
                 items = {k: torch.tensor(v, dtype=torch.long, device=self._device) for k, v in encodings.items()}
-                out, _ = doc_embedder(items)
+                _, out = doc_embedder(items['input_ids'])
                 features_docs.append(out)
             features_docs = torch.cat(features_docs, dim=0).to(self._device)
 
