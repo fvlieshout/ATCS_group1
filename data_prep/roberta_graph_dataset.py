@@ -64,12 +64,13 @@ class RobertaGraphDataset(GraphDataset):
             encoder (RobertaModel): Roberta encoder.
         """
 
+        # off-the-shelve pretrained Roberta Model
         embedder = RobertaEncoder()
-        if self.roberta_checkpoint is None:
-            # use off-the-shelve pretrained Roberta Model
-            return embedder
-        # use finetuned Roberta Model
-        embedder.load_state_dict(self.get_encoder_state_dict())
+
+        if self.roberta_checkpoint is not None:
+            # use finetuned Roberta Model
+            embedder.load_state_dict(self.get_encoder_state_dict())
+
         return embedder
 
     def get_encoder_state_dict(self):

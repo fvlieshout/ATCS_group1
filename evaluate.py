@@ -4,7 +4,7 @@ from train import *
 
 
 def evaluate(model_name, seed, b_size, data_name, checkpoint, transfer):
-    return train(model_name, seed, -1, -1, b_size, -1, -1, -1, -1, -1, 1, data_name, checkpoint, None, transfer,
+    return train(model_name, seed, -1, -1, b_size, -1, -1, -1, -1, -1, 1, data_name, checkpoint, None, None, transfer,
                  h_search=False, eval=True)
 
 
