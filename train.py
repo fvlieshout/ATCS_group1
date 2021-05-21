@@ -24,16 +24,17 @@ SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
 def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_decay_enc, w_decay_cl, warmup,
-          cf_hidden_dim, data_name, checkpoint, roberta_model, gnn_layer_name, transfer, h_search):
+          cf_hidden_dim, data_name, checkpoint, roberta_model, gnn_layer_name, transfer, h_search, eval=False):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if model_name not in SUPPORTED_MODELS:
         raise ValueError("Model type '%s' is not supported." % model_name)
 
-    print(f'Configuration:\n model_name: {model_name}\n data_name: {data_name}\n max epochs: {epochs}\n  patience:'
-          f' {patience}\n seed: {seed}\n batch_size: {b_size}\n l_rate_enc: {l_rate_enc}\n l_rate_cl: {l_rate_cl}\n'
-          f' warmup: {warmup}\n weight_decay_enc: {w_decay_enc}\n weight_decay_cl: {w_decay_cl}\n  cf_hidden_dim: '
-          f'{cf_hidden_dim}\n checkpoint: {checkpoint}\n finetuned Roberta model: {roberta_model}\n h_search: {h_search}\n GNN layer: {gnn_layer_name}\n')
+    print(f'\nConfiguration:\n mode: {"TEST" if eval else "TRAIN"}\n model_name: {model_name}\n data_name: {data_name}'
+          f'\n seed: {seed}\n batch_size: {b_size}\n checkpoint: {checkpoint}\n finetuned Roberta model: '
+          f'{roberta_model}\n max epochs: {epochs}\n patience:{patience}\n l_rate_enc: {l_rate_enc}\n '
+          f'l_rate_cl: {l_rate_cl}\n warmup: {warmup}\n weight_decay_enc: {w_decay_enc}\n weight_decay_cl: {w_decay_cl}'
+          f' \n cf_hidden_dim: {cf_hidden_dim}\n h_search: {h_search}\n GNN layer: {gnn_layer_name}\n')
 
     pl.seed_everything(seed)
 
@@ -59,21 +60,28 @@ def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_d
                                  seed, data_name, transfer)
     model = DocumentClassifier(model_params, optimizer_hparams, checkpoint, transfer, h_search)
 
-    # Training
-    print('Fitting model ..........\n')
-    start = time.time()
-    trainer.fit(model, train_loader, val_loader)
+    if not eval:
+        # Training
+        print('Fitting model ..........\n')
+        start = time.time()
+        trainer.fit(model, train_loader, val_loader)
 
-    end = time.time()
-    elapsed = end - start
-    print(f'\nRequired time for training: {int(elapsed / 60)} minutes.\n')
+        end = time.time()
+        elapsed = end - start
+        print(f'\nRequired time for training: {int(elapsed / 60)} minutes.\n')
 
-    # Testing
-    # Load best checkpoint after training
-    best_model_path = trainer.checkpoint_callback.best_model_path
-    print(f'Best model path: {best_model_path}')
+        # Load best checkpoint after training
+        model_path = trainer.checkpoint_callback.best_model_path
+        print(f'Best model path: {model_path}')
 
-    model = model.load_from_checkpoint(best_model_path)
+    elif checkpoint is not None:
+        # Testing
+        model_path = checkpoint
+        print(f'Evaluation model with path: {model_path}')
+    else:
+        raise ValueError("Wanting to evaluate, but can't as checkpoint is None.")
+
+    model = model.load_from_checkpoint(model_path)
     test_acc, val_acc = evaluate(trainer, model, test_loader, val_loader)
 
     # We want to save the whole model, because we fine-tune anyways!
@@ -119,7 +127,8 @@ def initialize_trainer(epochs, patience, model_name, l_rate_enc, l_rate_cl, weig
     if transfer:
         model_name = f'{model_name}-transfer'
 
-    version_str = f'dname={dataset}_seed={seed}_lr-enc={l_rate_enc}_lr-cl={l_rate_cl}_wdec-enc={weight_decay_enc}_wdec-cl={weight_decay_cl}_wsteps={warmup}'
+    version_str = f'dname={dataset}_seed={seed}_lr-enc={l_rate_enc}_lr-cl={l_rate_cl}_wdec-enc={weight_decay_enc}' \
+                  f'_wdec-cl={weight_decay_cl}_wsteps={warmup}'
 
     logger = TensorBoardLogger(LOG_PATH, name=model_name, version=version_str)
 
