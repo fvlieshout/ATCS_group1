@@ -18,9 +18,9 @@ class RobertaGraphDataset(GraphDataset):
     Text Dataset used by the Roberta graph model.
     """
 
-    def __init__(self, corpus, checkpoint):
+    def __init__(self, corpus, roberta_model):
         # this needs to be set BEFORE the constructor call, because the stuff in the super constructor needs this
-        self.roberta_checkpoint = checkpoint
+        self.roberta_checkpoint = roberta_model
 
         super(RobertaGraphDataset, self).__init__(corpus)
 
@@ -64,23 +64,13 @@ class RobertaGraphDataset(GraphDataset):
             encoder (RobertaModel): Roberta encoder.
         """
 
-        encoder = RobertaEncoder()
-
-        # only disables dropout
-        encoder.model.eval()
-
-        # freeze everything
-        for n, param in encoder.named_parameters():
-            param.requires_grad = False
-
+        embedder = RobertaEncoder()
         if self.roberta_checkpoint is None:
-            # use only pretrained roberta for the document embeddings
-            return encoder
-
-        # use pretrained + fine tuned roberta for the document embeddings
-        encoder.load_state_dict(self.get_encoder_state_dict())
-
-        return encoder
+            # use off-the-shelve pretrained Roberta Model
+            return embedder
+        # use finetuned Roberta Model
+        embedder.load_state_dict(self.get_encoder_state_dict())
+        return embedder
 
     def get_encoder_state_dict(self):
         encoder_state_dict = {}
