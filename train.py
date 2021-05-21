@@ -46,7 +46,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_d
                          "weight_decay_enc": w_decay_enc,
                          "weight_decay_cl": w_decay_cl,
                          "warmup": warmup,
-                         "max_iters": 2000}
+                         "max_iters": len(train_loader) * epochs}
 
     model_params = {
         'model': model_name,
