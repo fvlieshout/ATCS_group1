@@ -7,7 +7,7 @@ from data_prep.roberta_dataset import *
 from data_prep.roberta_graph_dataset import *
 
 
-def get_dataloaders(model, b_size, data_name, checkpoint=None):
+def get_dataloaders(model, b_size, data_name, roberta_model=None):
     corpus = get_data(data_name)
     additional_params = {}
 
@@ -25,7 +25,7 @@ def get_dataloaders(model, b_size, data_name, checkpoint=None):
         additional_params['doc_dim'] = dataset.doc_dim
         additional_params['word_dim'] = dataset.word_dim
     elif model in ['roberta_pretrained_gnn', 'roberta_finetuned_gnn']:
-        dataset = RobertaGraphDataset(corpus, checkpoint)
+        dataset = RobertaGraphDataset(corpus, roberta_model)
     else:
         raise ValueError("Model type '%s' is not supported." % model)
 

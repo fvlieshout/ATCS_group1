@@ -24,14 +24,15 @@ SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
 def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_decay_enc, w_decay_cl, warmup,
-          cf_hidden_dim, data_name, checkpoint, gnn_layer_name, transfer, h_search, eval=False):
+          cf_hidden_dim, data_name, checkpoint, roberta_model, gnn_layer_name, transfer, h_search, eval=False):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if model_name not in SUPPORTED_MODELS:
         raise ValueError("Model type '%s' is not supported." % model_name)
 
     print(f'\nConfiguration:\n mode: {"TEST" if eval else "TRAIN"}\n model_name: {model_name}\n data_name: {data_name}'
-          f'\n seed: {seed}\n batch_size: {b_size}\n checkpoint: {checkpoint}\n max epochs: {epochs}\n patience:{patience}\n l_rate_enc: {l_rate_enc}\n l_rate_cl: {l_rate_cl}\n'
+          f'\n seed: {seed}\n batch_size: {b_size}\n checkpoint: {checkpoint}\n finetuned Roberta model: {roberta_model}'
+          f'\n max epochs: {epochs}\n patience:{patience}\n l_rate_enc: {l_rate_enc}\n l_rate_cl: {l_rate_cl}\n'
           f' warmup: {warmup}\n weight_decay_enc: {w_decay_enc}\n weight_decay_cl: {w_decay_cl}\n cf_hidden_dim: '
           f'{cf_hidden_dim}\n h_search: {h_search}\n GNN layer: {gnn_layer_name}\n')
 
@@ -39,7 +40,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_d
 
     # the data preprocessing
 
-    train_loader, val_loader, test_loader, add_params = get_dataloaders(model_name, b_size, data_name, checkpoint)
+    train_loader, val_loader, test_loader, add_params = get_dataloaders(model_name, b_size, data_name, roberta_model)
 
     optimizer_hparams = {"lr_enc": l_rate_enc,
                          "lr_cl": l_rate_cl,
@@ -182,6 +183,8 @@ if __name__ == "__main__":
     parser.add_argument('--cf-hidden-dim', dest='cf_hidden_dim', type=int, default=512)
     parser.add_argument('--checkpoint', default=None, type=str, metavar='PATH',
                         help='Path to latest checkpoint (default: None)')
+    parser.add_argument('--roberta-model', dest='roberta_model', default=None, type=str, metavar='PATH',
+                        help='Path to the finetuned Roberta model (default: None)')
     parser.add_argument('--transfer', dest='transfer', action='store_true', help='Transfer the model to new dataset.')
     parser.add_argument('--h-search', dest='h_search', action='store_true', default=False,
                         help='Flag for doing hyper parameter search (and freezing half of roberta layers) '
@@ -203,6 +206,7 @@ if __name__ == "__main__":
         cf_hidden_dim=params["cf_hidden_dim"],
         data_name=params["dataset"],
         checkpoint=params["checkpoint"],
+        roberta_model=params["roberta_model"],
         gnn_layer_name=params["gnn_layer_name"],
         transfer=params["transfer"],
         h_search=params["h_search"],
