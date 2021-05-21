@@ -33,11 +33,6 @@ class RobertaDataset(Dataset):
 
         return collate_fn
 
-    @staticmethod
-    def tokenize(tokenizer, texts):
-        encodings = tokenizer(texts, truncation=True, padding=True)
-        return
-
     def labels(self):
         """
         Return the labels of data points.

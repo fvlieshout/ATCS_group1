@@ -24,22 +24,23 @@ SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
 def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_decay_enc, w_decay_cl, warmup,
-          cf_hidden_dim, data_name, checkpoint, gnn_layer_name, transfer, h_search):
+          cf_hidden_dim, data_name, checkpoint, roberta_model, gnn_layer_name, transfer, h_search, eval=False):
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if model_name not in SUPPORTED_MODELS:
         raise ValueError("Model type '%s' is not supported." % model_name)
 
-    print(f'Configuration:\n model_name: {model_name}\n data_name: {data_name}\n max epochs: {epochs}\n  patience:'
-          f' {patience}\n seed: {seed}\n batch_size: {b_size}\n l_rate_enc: {l_rate_enc}\n l_rate_cl: {l_rate_cl}\n'
-          f' warmup: {warmup}\n weight_decay_enc: {w_decay_enc}\n weight_decay_cl: {w_decay_cl}\n  cf_hidden_dim: '
-          f'{cf_hidden_dim}\n checkpoint: {checkpoint}\n h_search: {h_search}\n GNN layer: {gnn_layer_name}\n')
+    print(f'\nConfiguration:\n mode: {"TEST" if eval else "TRAIN"}\n model_name: {model_name}\n data_name: {data_name}'
+          f'\n seed: {seed}\n batch_size: {b_size}\n checkpoint: {checkpoint}\n finetuned Roberta model: '
+          f'{roberta_model}\n max epochs: {epochs}\n patience:{patience}\n l_rate_enc: {l_rate_enc}\n '
+          f'l_rate_cl: {l_rate_cl}\n warmup: {warmup}\n weight_decay_enc: {w_decay_enc}\n weight_decay_cl: {w_decay_cl}'
+          f' \n cf_hidden_dim: {cf_hidden_dim}\n h_search: {h_search}\n GNN layer: {gnn_layer_name}\n')
 
     pl.seed_everything(seed)
 
     # the data preprocessing
 
-    train_loader, val_loader, test_loader, add_params = get_dataloaders(model_name, b_size, data_name, checkpoint)
+    train_loader, val_loader, test_loader, add_params = get_dataloaders(model_name, b_size, data_name, roberta_model)
 
     optimizer_hparams = {"lr_enc": l_rate_enc,
                          "lr_cl": l_rate_cl,
@@ -59,21 +60,28 @@ def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_d
                                  seed, data_name, transfer, checkpoint)
     model = DocumentClassifier(model_params, optimizer_hparams, checkpoint, transfer, h_search)
 
-    # Training
-    print('Fitting model ..........\n')
-    start = time.time()
-    trainer.fit(model, train_loader, val_loader)
+    if not eval:
+        # Training
+        print('Fitting model ..........\n')
+        start = time.time()
+        trainer.fit(model, train_loader, val_loader)
 
-    end = time.time()
-    elapsed = end - start
-    print(f'\nRequired time for training: {int(elapsed / 60)} minutes.\n')
+        end = time.time()
+        elapsed = end - start
+        print(f'\nRequired time for training: {int(elapsed / 60)} minutes.\n')
 
-    # Testing
-    # Load best checkpoint after training
-    best_model_path = trainer.checkpoint_callback.best_model_path
-    print(f'Best model path: {best_model_path}')
+        # Load best checkpoint after training
+        model_path = trainer.checkpoint_callback.best_model_path
+        print(f'Best model path: {model_path}')
 
-    model = model.load_from_checkpoint(best_model_path)
+    elif checkpoint is not None:
+        # Testing
+        model_path = checkpoint
+        print(f'Evaluation model with path: {model_path}')
+    else:
+        raise ValueError("Wanting to evaluate, but can't as checkpoint is None.")
+
+    model = model.load_from_checkpoint(model_path)
     test_acc, val_acc = evaluate(trainer, model, test_loader, val_loader)
 
     # We want to save the whole model, because we fine-tune anyways!
@@ -120,7 +128,8 @@ def initialize_trainer(epochs, patience, model_name, l_rate_enc, l_rate_cl, weig
         fromdname = checkpoint.split('_seed')[0].split('dname=')[1]
         model_name = f'{model_name}-transfer-from-{fromdname}'
 
-    version_str = f'dname={dataset}_seed={seed}_lr-enc={l_rate_enc}_lr-cl={l_rate_cl}_wdec-enc={weight_decay_enc}_wdec-cl={weight_decay_cl}_wsteps={warmup}'
+    version_str = f'dname={dataset}_seed={seed}_lr-enc={l_rate_enc}_lr-cl={l_rate_cl}_wdec-enc={weight_decay_enc}' \
+                  f'_wdec-cl={weight_decay_cl}_wsteps={warmup}'
 
     logger = TensorBoardLogger(LOG_PATH, name=model_name, version=version_str)
 
@@ -170,12 +179,14 @@ if __name__ == "__main__":
                         help='Select the dataset you want to use.')
     parser.add_argument('--model', dest='model', default='roberta_pretrained_gnn', choices=SUPPORTED_MODELS,
                         help='Select the model you want to use.')
-    parser.add_argument('--gnn-layer-name', dest='gnn_layer_name', default='GCNConv', choices=SUPPORTED_GNN_LAYERS,
+    parser.add_argument('--gnn-layer-name', dest='gnn_layer_name', default='GraphConv', choices=SUPPORTED_GNN_LAYERS,
                         help='Select the GNN layer you want to use.')
     parser.add_argument('--seed', dest='seed', type=int, default=1234)
     parser.add_argument('--cf-hidden-dim', dest='cf_hidden_dim', type=int, default=512)
     parser.add_argument('--checkpoint', default=None, type=str, metavar='PATH',
                         help='Path to latest checkpoint (default: None)')
+    parser.add_argument('--roberta-model', dest='roberta_model', default=None, type=str, metavar='PATH',
+                        help='Path to the finetuned Roberta model (default: None)')
     parser.add_argument('--transfer', dest='transfer', action='store_true', help='Transfer the model to new dataset.')
     parser.add_argument('--h-search', dest='h_search', action='store_true', default=False,
                         help='Flag for doing hyper parameter search (and freezing half of roberta layers) '
@@ -197,6 +208,7 @@ if __name__ == "__main__":
         cf_hidden_dim=params["cf_hidden_dim"],
         data_name=params["dataset"],
         checkpoint=params["checkpoint"],
+        roberta_model=params["roberta_model"],
         gnn_layer_name=params["gnn_layer_name"],
         transfer=params["transfer"],
         h_search=params["h_search"],
