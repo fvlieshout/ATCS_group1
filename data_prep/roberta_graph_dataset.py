@@ -45,10 +45,7 @@ class RobertaGraphDataset(GraphDataset):
                 docs = self._raw_texts[i * batch_size:max_docs]
                 encodings = self._tokenizer(docs, truncation=True, padding=True)
                 items = {k: torch.tensor(v, dtype=torch.long, device=self._device) for k, v in encodings.items()}
-                if self.roberta_checkpoint is None:
-                    _, out = doc_embedder(items['input_ids'])
-                else:
-                    out, _ = doc_embedder(items)
+                out, _ = doc_embedder(items)
                 features_docs.append(out)
             features_docs = torch.cat(features_docs, dim=0).to(self._device)
 
@@ -67,13 +64,12 @@ class RobertaGraphDataset(GraphDataset):
             encoder (RobertaModel): Roberta encoder.
         """
 
+        embedder = RobertaEncoder()
         if self.roberta_checkpoint is None:
             # use off-the-shelve pretrained Roberta Model
-            embedder = RobertaModel.from_pretrained('roberta-base').to(self._device)
-        else:
-            # use finetunes Roberta Model
-            embedder = RobertaEncoder()
-            embedder.load_state_dict(self.get_encoder_state_dict())
+            return embedder
+        # use finetuned Roberta Model
+        embedder.load_state_dict(self.get_encoder_state_dict())
         return embedder
 
     def get_encoder_state_dict(self):
