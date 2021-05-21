@@ -176,7 +176,7 @@ if __name__ == "__main__":
                         help='Select the dataset you want to use.')
     parser.add_argument('--model', dest='model', default='roberta_pretrained_gnn', choices=SUPPORTED_MODELS,
                         help='Select the model you want to use.')
-    parser.add_argument('--gnn-layer-name', dest='gnn_layer_name', default='GCNConv', choices=SUPPORTED_GNN_LAYERS,
+    parser.add_argument('--gnn-layer-name', dest='gnn_layer_name', default='GraphConv', choices=SUPPORTED_GNN_LAYERS,
                         help='Select the GNN layer you want to use.')
     parser.add_argument('--seed', dest='seed', type=int, default=1234)
     parser.add_argument('--cf-hidden-dim', dest='cf_hidden_dim', type=int, default=512)
