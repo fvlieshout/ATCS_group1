@@ -46,7 +46,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_d
                          "weight_decay_enc": w_decay_enc,
                          "weight_decay_cl": w_decay_cl,
                          "warmup": warmup,
-                         "max_iters": len(train_loader) * epochs}
+                         "max_iters": 2000}
 
     model_params = {
         'model': model_name,
@@ -56,7 +56,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_d
     }
 
     trainer = initialize_trainer(epochs, patience, model_name, l_rate_enc, l_rate_cl, w_decay_enc, w_decay_cl, warmup,
-                                 seed, data_name, transfer)
+                                 seed, data_name, transfer, checkpoint)
     model = DocumentClassifier(model_params, optimizer_hparams, checkpoint, transfer, h_search)
 
     # Training
@@ -111,13 +111,14 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
 
 
 def initialize_trainer(epochs, patience, model_name, l_rate_enc, l_rate_cl, weight_decay_enc, weight_decay_cl, warmup,
-                       seed, dataset, transfer):
+                       seed, dataset, transfer, checkpoint):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if transfer:
-        model_name = f'{model_name}-transfer'
+        fromdname = checkpoint.split('_seed')[0].split('dname=')[1]
+        model_name = f'{model_name}-transfer-from-{fromdname}'
 
     version_str = f'dname={dataset}_seed={seed}_lr-enc={l_rate_enc}_lr-cl={l_rate_cl}_wdec-enc={weight_decay_enc}_wdec-cl={weight_decay_cl}_wsteps={warmup}'
 
@@ -136,7 +137,7 @@ def initialize_trainer(epochs, patience, model_name, l_rate_enc, l_rate_cl, weig
                          gpus=1 if torch.cuda.is_available() else 0,
                          max_epochs=epochs,
                          callbacks=[early_stop_callback],
-                         progress_bar_refresh_rate=1)
+                         progress_bar_refresh_rate=0)
 
     # Optional logging argument that we don't need
     trainer.logger._default_hp_metric = None

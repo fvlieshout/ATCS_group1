@@ -64,6 +64,8 @@ class GraphDataset(Dataset, GeometricDataset):
         self._data.val_mask = val_mask
         self._data.test_mask = test_mask
 
+        print(self._data)
+
     def labels(self):
         """
         Return the labels of data points.
@@ -152,6 +154,10 @@ class GraphDataset(Dataset, GeometricDataset):
             tokenized_text (List): List of tokenized documents texts.
             tokens (List): List of all tokens.
         """
+        if len(self._raw_texts) == 50000:
+            lower_threshold = 10
+            upper_threshold = 30
+
         tokenized_text = [word_tokenize(text.lower()) for text in self._raw_texts]
 
         counter = defaultdict(lambda: 0)
