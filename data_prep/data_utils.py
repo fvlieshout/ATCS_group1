@@ -9,9 +9,9 @@ from data_prep.roberta_graph_dataset import *
 SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
-def get_dataloaders(model, b_size, data_name, roberta_model=None):
+def get_data_loaders(model, b_size, data_name, roberta_model=None):
     """
-    Initializes train, text and validation dataloaders for either roberta or graph models.
+    Initializes train, text and validation data loaders for either roberta or graph models.
     Args:
         model (str): The name of the model which will be used.
         b_size (int): Batch size to be used in the data loader.

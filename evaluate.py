@@ -4,6 +4,20 @@ from train import *
 
 
 def evaluate(model_name, seed, b_size, data_name, checkpoint, transfer):
+    """
+    Runs evaluation on training and validation set for a model which is loaded from a checkpoint.
+
+    Args:
+        model_name (str) - Name of the model which should be evaluated.
+        seed (str) - The seed used for this.
+        b_size (str) - Batch size.
+        data_name (str) - Name of the data corpus which should be used.
+        checkpoint (str) - Path to the checkpoint file.
+        transfer (bool) - If doing transfer learning or not.
+    Returns:
+        test_accuracy (float) - The achieved test accuracy.
+        val_accuracy (float) - The achieved validation accuracy.
+    """
     return train(model_name, seed, -1, -1, b_size, -1, -1, -1, -1, -1, 1, data_name, checkpoint, None, None, transfer,
                  h_search=False, eval=True)
 

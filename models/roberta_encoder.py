@@ -11,7 +11,7 @@ class RobertaEncoder(nn.Module):
     def __init__(self, h_search=False):
         """
         Args:
-            h_search - If this is true, freezes half of the roberta layers.
+            h_search (bool) - If this is true, freezes half of the roberta layers.
         """
         super().__init__()
 
@@ -37,7 +37,7 @@ class RobertaEncoder(nn.Module):
             batch (dict): Dictionary of lists/arrays/tensors returned by the encode method of huggingface ('input_ids',
             'attention_mask', etc.).
             **kwargs (Map): Will catch additional unused attributes.
-        Returns
+        Returns:
             out (Tensor): CLS hidden state as tensor.
             labels (List): List of int containing the labels of the batch.
         """

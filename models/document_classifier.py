@@ -177,7 +177,7 @@ def load_pretrained_encoder(checkpoint_path):
     Args:
         checkpoint_path (str) - Path to a checkpoint for the DocumentClassifier.
     Returns:
-        encoder_state_dict (dict)
+        encoder_state_dict (dict) - Containing all keys for weights of encoder.
     """
     checkpoint = torch.load(checkpoint_path)
     encoder_state_dict = {}

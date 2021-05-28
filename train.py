@@ -1,11 +1,10 @@
 import argparse
 import os
-import time
-
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
+import time
 import torch
-from data_prep.data_utils import get_dataloaders, SUPPORTED_DATASETS
+from data_prep.data_utils import get_data_loaders, SUPPORTED_DATASETS
 from models.document_classifier import DocumentClassifier
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -39,7 +38,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_d
 
     # the data preprocessing
 
-    train_loader, val_loader, test_loader, add_params = get_dataloaders(model_name, b_size, data_name, roberta_model)
+    train_loader, val_loader, test_loader, add_params = get_data_loaders(model_name, b_size, data_name, roberta_model)
 
     optimizer_hparams = {"lr_enc": l_rate_enc,
                          "lr_cl": l_rate_cl,
@@ -91,6 +90,15 @@ def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_d
 def evaluate(trainer, model, test_dataloader, val_dataloader):
     """
     Tests a model on test and validation set.
+
+    Args:
+        trainer (pl.Trainer) - Lightning trainer to use.
+        model (DocumentClassifier) - The Lightning Module which should be used.
+        test_dataloader (DataLoader) - Data loader for the test split.
+        val_dataloader (DataLoader) - Data loader for the validation split.
+    Returns:
+        test_accuracy (float) - The achieved test accuracy.
+        val_accuracy (float) - The achieved validation accuracy.
     """
 
     print('Testing model on validation and test ..........\n')
@@ -119,13 +127,17 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
 
 def initialize_trainer(epochs, patience, model_name, l_rate_enc, l_rate_cl, weight_decay_enc, weight_decay_cl, warmup,
                        seed, dataset, transfer, checkpoint):
+    """
+    Initializes a Lightning Trainer for respective parameters as given in the function header. Creates a proper
+    folder name for the respective model files, initializes logging and early stopping.
+    """
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if transfer:
-        fromdname = checkpoint.split('_seed')[0].split('dname=')[1]
-        model_name = f'{model_name}-transfer-from-{fromdname}'
+        from_dname = checkpoint.split('_seed')[0].split('dname=')[1]
+        model_name = f'{model_name}-transfer-from-{from_dname}'
 
     version_str = f'dname={dataset}_seed={seed}_lr-enc={l_rate_enc}_lr-cl={l_rate_cl}_wdec-enc={weight_decay_enc}' \
                   f'_wdec-cl={weight_decay_cl}_wsteps={warmup}'
