@@ -146,7 +146,7 @@ def initialize_trainer(epochs, patience, model_name, l_rate_enc, l_rate_cl, weig
                          gpus=1 if torch.cuda.is_available() else 0,
                          max_epochs=epochs,
                          callbacks=[early_stop_callback],
-                         progress_bar_refresh_rate=0)
+                         progress_bar_refresh_rate=1)
 
     # Optional logging argument that we don't need
     trainer.logger._default_hp_metric = None
