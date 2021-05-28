@@ -68,8 +68,6 @@ class GraphDataset(Dataset, GeometricDataset):
         self._data.val_mask = val_mask
         self._data.test_mask = test_mask
 
-        print(data)
-
     def labels(self):
         """
         Return the labels of data points.
