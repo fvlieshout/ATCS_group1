@@ -5,6 +5,16 @@ from torch_geometric.nn import GCNConv, GraphConv
 
 class PureGraphEncoder(nn.Module):
     def __init__(self, input_dim, hidden_dim, graph_layer_name):
+        """
+        Creates a GraphEncoder object
+        Args:
+            input_dim (int): input dimension for the encoder
+            hidden_dim (int): hidden dimension that will be used by the encoder
+            graph_layer_name (String): the type of GNN layer ('GCNConv' or 'GraphConv')
+
+        Raises:
+            Exception: if they graph_layer_name is not in ['GCNConv','GraphConv']
+        """
         super(PureGraphEncoder, self).__init__()
         if graph_layer_name == 'GCNConv':
             self.conv1 = GCNConv(input_dim, hidden_dim)

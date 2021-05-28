@@ -74,6 +74,11 @@ class RobertaGraphDataset(GraphDataset):
         return embedder
 
     def get_encoder_state_dict(self):
+        """
+        Loads the state dict of the encoder of the Roberta Checkpoint model
+        Returns:
+            state_dict: the state dict of the checkpoint encoder
+        """
         encoder_state_dict = {}
         for layer_key, param in torch.load(self.roberta_checkpoint)['state_dict'].items():
             if layer_key.startswith("model"):
