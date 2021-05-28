@@ -5,7 +5,7 @@ import time
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as cb
 import torch
-from data_prep.data_utils import get_dataloaders
+from data_prep.data_utils import get_dataloaders, SUPPORTED_DATASETS
 from models.document_classifier import DocumentClassifier
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -20,7 +20,6 @@ LOG_PATH = "./logs/"
 
 SUPPORTED_MODELS = ['roberta', 'glove_gnn', 'roberta_pretrained_gnn', 'roberta_finetuned_gnn']
 SUPPORTED_GNN_LAYERS = ['GCNConv', 'GraphConv']
-SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
 def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_decay_enc, w_decay_cl, warmup, max_iters,

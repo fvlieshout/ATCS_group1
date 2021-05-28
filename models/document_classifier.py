@@ -1,21 +1,25 @@
 import numpy as np
 import pytorch_lightning as pl
+import torch
 from models.glove_graph_encoder import GloveGraphEncoder
 from models.roberta_encoder import RobertaEncoder
 from models.roberta_graph_encoder import RobertaGraphEncoder
 from numpy.lib.arraysetops import isin
-import torch
 from torch import nn
 from torch import optim
 from torch.optim import AdamW
 
 
 class DocumentClassifier(pl.LightningModule):
+    """
+    PyTorch Lightning module containing all model setup: Picking the correct encoder, initializing the classifier,
+    and overwriting standard functions for training and optimization.
+    """
 
     # noinspection PyUnusedLocal
     def __init__(self, model_hparams, optimizer_hparams, checkpoint=None, transfer=False, h_search=False):
         """
-        Inputs:
+        Args:
             model_hparams - Hyperparameters for the whole model, as dictionary. Also contains Roberta Configuration.
             optimizer_hparams - Hyperparameters for the optimizer, as dictionary. This includes learning rate,
             weight decay, etc.
@@ -61,6 +65,11 @@ class DocumentClassifier(pl.LightningModule):
         self.lr_scheduler = None
 
     def configure_optimizers(self):
+        """
+        Configures the AdamW optimizer and enables training with different learning rates for encoder and classifier.
+        Also initializes the learning rate scheduler.
+        """
+
         lr_enc = self.hparams.optimizer_hparams['lr_enc']
         lr_cl = self.hparams.optimizer_hparams['lr_cl']
         if lr_cl < 0:  # classifier learning rate not specified
@@ -100,12 +109,7 @@ class DocumentClassifier(pl.LightningModule):
         super().optimizer_step(*args, **kwargs)
         self.lr_scheduler.step()  # Step per iteration
 
-    def training_step(self, batch, batch_idx):
-        """
-        Inputs:
-            batch         - Input batch, output of the training loader.
-            batch_idx     - Index of the batch in the dataset (not needed here).
-        """
+    def training_step(self, batch, _):
         out, labels = self.model(batch, mode='train')
         predictions = self.classifier(out)
         loss = self.loss_module(predictions, labels)
@@ -117,20 +121,23 @@ class DocumentClassifier(pl.LightningModule):
         self.log('lr_rate', self.lr_scheduler.get_lr()[0])
         return loss
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, _):
         # By default logs it per epoch (weighted average over batches)
         out, labels = self.model(batch, mode='val')
         predictions = self.classifier(out)
         self.log('val_accuracy', self.accuracy(predictions, labels))
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch, _):
         # By default logs it per epoch (weighted average over batches)
         out, labels = self.model(batch, mode=self.test_val_mode)
         predictions = self.classifier(out)
         self.log('test_accuracy', self.accuracy(predictions, labels))
 
-    def backward(self, loss, optimizer, optimizer_idx):
-        # override backward pass so we can set retain_graph to True; should be true for the roberta graph encoder
+    def backward(self, loss, *_):
+        """
+        Overrides backward pass in order to set retain_graph to True.
+        Roberta graph encoder requires the graph to be retained.
+        """
         loss.backward(retain_graph=isinstance(self.model, RobertaGraphEncoder))
 
     @staticmethod
@@ -141,6 +148,9 @@ class DocumentClassifier(pl.LightningModule):
 
 # noinspection PyProtectedMember
 class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
+    """
+    Learning rate scheduler, combining warm-up with a cosine-shaped learning rate decay.
+    """
 
     def __init__(self, optimizer, warmup, max_iters):
         self.warmup = warmup
@@ -160,6 +170,15 @@ class CosineWarmupScheduler(optim.lr_scheduler._LRScheduler):
 
 
 def load_pretrained_encoder(checkpoint_path):
+    """
+    Load a pretrained encoder state dict and remove 'model.' from the keys in the state dict, so that solely
+    the encoder can be loaded.
+
+    Args:
+        checkpoint_path (str) - Path to a checkpoint for the DocumentClassifier.
+    Returns:
+        encoder_state_dict (dict)
+    """
     checkpoint = torch.load(checkpoint_path)
     encoder_state_dict = {}
     for layer, param in checkpoint["state_dict"].items():

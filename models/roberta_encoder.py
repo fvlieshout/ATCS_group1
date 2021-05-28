@@ -3,7 +3,16 @@ from transformers import RobertaModel
 
 
 class RobertaEncoder(nn.Module):
+    """
+    Wrapper for the roberta model, which loads the model from HuggingFace, possibly freezes some of the layers,
+    and conducts the forward pass.
+    """
+
     def __init__(self, h_search=False):
+        """
+        Args:
+            h_search - If this is true, freezes half of the roberta layers.
+        """
         super().__init__()
 
         # transformer_config = model_hparams['transformer_config']
@@ -14,7 +23,6 @@ class RobertaEncoder(nn.Module):
 
         # freeze half if we are doing hyper parameter search
         if h_search:
-            # freezing the encoder parameters
             encoder_layers = self.model.encoder.layer
 
             for layer in encoder_layers[:int(len(encoder_layers) / 2)]:
