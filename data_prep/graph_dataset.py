@@ -10,6 +10,7 @@ import torch_geometric.data as geom_data
 import torch
 from data_prep.dataset import Dataset
 from data_prep.graph_utils import tf_idf_mtx, get_PMI
+from data_prep.imdb_data import IMDbData
 from torch_geometric.data import Data
 from torch_geometric.data import Dataset as GeometricDataset
 
@@ -35,7 +36,10 @@ class GraphDataset(Dataset, GeometricDataset):
         all_docs = ['doc.{}'.format(i) for i in range(len(self._raw_texts))]
 
         print('Preprocess corpus')
-        tokenized_text, self._tokens = self._preprocess()
+        if type(corpus) == IMDbData:
+            tokenized_text, self._tokens = self._preprocess(lower_threshold=10, upper_threshold=30)
+        else:
+            tokenized_text, self._tokens = self._preprocess()
 
         iton = list(all_docs + self._tokens)
         ntoi = {iton[i]: i for i in range(len(iton))}
@@ -63,6 +67,8 @@ class GraphDataset(Dataset, GeometricDataset):
         self._data.train_mask = train_mask
         self._data.val_mask = val_mask
         self._data.test_mask = test_mask
+
+        print(data)
 
     def labels(self):
         """
@@ -152,10 +158,6 @@ class GraphDataset(Dataset, GeometricDataset):
             tokenized_text (List): List of tokenized documents texts.
             tokens (List): List of all tokens.
         """
-        if len(self._raw_texts) == 50000:
-            lower_threshold = 10
-            upper_threshold = 30
-
         tokenized_text = [word_tokenize(text.lower()) for text in self._raw_texts]
 
         counter = defaultdict(lambda: 0)
