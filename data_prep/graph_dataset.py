@@ -36,10 +36,8 @@ class GraphDataset(Dataset, GeometricDataset):
         all_docs = ['doc.{}'.format(i) for i in range(len(self._raw_texts))]
 
         print('Preprocess corpus')
-        if type(corpus) == IMDbData:
-            tokenized_text, self._tokens = self._preprocess(lower_threshold=10, upper_threshold=30)
-        else:
-            tokenized_text, self._tokens = self._preprocess()
+        lower_threshold, upper_threshold = (10, 30) if type(corpus) == IMDbData else (4, 50)
+        tokenized_text, self._tokens = self._preprocess(lower_threshold, upper_threshold)
 
         iton = list(all_docs + self._tokens)
         ntoi = {iton[i]: i for i in range(len(iton))}
