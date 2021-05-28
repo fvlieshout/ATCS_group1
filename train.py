@@ -23,7 +23,7 @@ SUPPORTED_GNN_LAYERS = ['GCNConv', 'GraphConv']
 SUPPORTED_DATASETS = ['R8', 'R52', 'AGNews', 'IMDb']
 
 
-def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_decay_enc, w_decay_cl, warmup,
+def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_decay_enc, w_decay_cl, warmup, max_iters,
           cf_hidden_dim, data_name, checkpoint, roberta_model, gnn_layer_name, transfer, h_search, eval=False):
     os.makedirs(LOG_PATH, exist_ok=True)
 
@@ -47,7 +47,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_d
                          "weight_decay_enc": w_decay_enc,
                          "weight_decay_cl": w_decay_cl,
                          "warmup": warmup,
-                         "max_iters": len(train_loader) * epochs}
+                         "max_iters": len(train_loader) * epochs} if max_iters < 0 else max_iters
 
     model_params = {
         'model': model_name,
@@ -57,7 +57,7 @@ def train(model_name, seed, epochs, patience, b_size, l_rate_enc, l_rate_cl, w_d
     }
 
     trainer = initialize_trainer(epochs, patience, model_name, l_rate_enc, l_rate_cl, w_decay_enc, w_decay_cl, warmup,
-                                 seed, data_name, transfer)
+                                 seed, data_name, transfer, checkpoint)
     model = DocumentClassifier(model_params, optimizer_hparams, checkpoint, transfer, h_search)
 
     if not eval:
@@ -119,13 +119,14 @@ def evaluate(trainer, model, test_dataloader, val_dataloader):
 
 
 def initialize_trainer(epochs, patience, model_name, l_rate_enc, l_rate_cl, weight_decay_enc, weight_decay_cl, warmup,
-                       seed, dataset, transfer):
+                       seed, dataset, transfer, checkpoint):
     model_checkpoint = cb.ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_accuracy")
 
     os.makedirs(LOG_PATH, exist_ok=True)
 
     if transfer:
-        model_name = f'{model_name}-transfer'
+        fromdname = checkpoint.split('_seed')[0].split('dname=')[1]
+        model_name = f'{model_name}-transfer-from-{fromdname}'
 
     version_str = f'dname={dataset}_seed={seed}_lr-enc={l_rate_enc}_lr-cl={l_rate_cl}_wdec-enc={weight_decay_enc}' \
                   f'_wdec-cl={weight_decay_cl}_wsteps={warmup}'
@@ -171,6 +172,9 @@ if __name__ == "__main__":
                         help="Classifier weight decay for L2 regularization of optimizer AdamW")
     parser.add_argument("--warmup", dest='warmup', type=int, default=500,
                         help="Number of steps for which we do learning rate warmup.")
+    parser.add_argument("--max-iters", dest='max_iters', type=int, default=-1,
+                        help='Number of iterations until the learning rate decay after warmup should last. '
+                             'If not given then it is computed from the given epochs.')
 
     # CONFIGURATION
 
@@ -204,6 +208,7 @@ if __name__ == "__main__":
         w_decay_enc=params["w_decay_enc"],
         w_decay_cl=params["w_decay_cl"],
         warmup=params["warmup"],
+        max_iters=params["max_iters"],
         cf_hidden_dim=params["cf_hidden_dim"],
         data_name=params["dataset"],
         checkpoint=params["checkpoint"],

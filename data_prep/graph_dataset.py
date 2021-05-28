@@ -10,6 +10,7 @@ import torch_geometric.data as geom_data
 import torch
 from data_prep.dataset import Dataset
 from data_prep.graph_utils import tf_idf_mtx, get_PMI
+from data_prep.imdb_data import IMDbData
 from torch_geometric.data import Data
 from torch_geometric.data import Dataset as GeometricDataset
 
@@ -35,7 +36,8 @@ class GraphDataset(Dataset, GeometricDataset):
         all_docs = ['doc.{}'.format(i) for i in range(len(self._raw_texts))]
 
         print('Preprocess corpus')
-        tokenized_text, self._tokens = self._preprocess()
+        lower_threshold, upper_threshold = (10, 30) if type(corpus) == IMDbData else (4, 50)
+        tokenized_text, self._tokens = self._preprocess(lower_threshold, upper_threshold)
 
         iton = list(all_docs + self._tokens)
         ntoi = {iton[i]: i for i in range(len(iton))}
